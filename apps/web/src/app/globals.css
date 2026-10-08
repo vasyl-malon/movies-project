@@ -1,0 +1,4 @@
+html { color-scheme: dark; }
+body { margin: 0; background: #101114; color: #f1f2f4; font-family: system-ui, sans-serif; }
+main { max-width: 48rem; margin: 5rem auto; padding: 0 1.5rem; }
+p { color: #b7bbc5; line-height: 1.6; }
