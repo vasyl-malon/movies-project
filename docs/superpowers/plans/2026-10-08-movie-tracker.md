@@ -61,11 +61,11 @@ Use UUID application IDs, case-normalized usernames, ISO timestamps, and bounded
 
 **Interfaces:** Produces shared contracts, `GET /health -> { status: 'ok' }`, and scripts `dev`, `build`, `typecheck`, `lint`, `test`. Vitest powers backend behavior tests; local PostgreSQL uses Docker Compose.
 
-- [ ] Select stable mutually compatible package versions supported by Vercel, confirm them against official documentation, scaffold the workspace, and commit the lockfile. Initialize Git only if still absent. Keep secrets out of tracked files.
-- [ ] Add the health integration test: `expect((await request(app).get('/health')).body).toEqual({ status: 'ok' })`. Confirm failure before adding the controller.
-- [ ] Implement health routing, configuration validation, and common validation/error handling; bootstrap API and frontend on separate local ports. Reject missing backend secrets with named configuration errors that never print their values.
-- [ ] Run `pnpm --filter @tracker/api test -- health.spec.ts`, `pnpm typecheck`, and `pnpm build`; expect tests passing and both applications building.
-- [ ] Commit the workspace foundation and contracts as `chore: establish movie tracker workspace`.
+- [x] Select stable mutually compatible package versions supported by Vercel, confirm them against official documentation, scaffold the workspace, and commit the lockfile. Initialize Git only if still absent. Keep secrets out of tracked files.
+- [x] Add the health integration test: `expect((await request(app).get('/health')).body).toEqual({ status: 'ok' })`. Confirm failure before adding the controller.
+- [x] Implement health routing, configuration validation, and common validation/error handling; bootstrap API and frontend on separate local ports. Reject missing backend secrets with named configuration errors that never print their values.
+- [x] Run `pnpm --filter @tracker/api test -- health.spec.ts`, `pnpm typecheck`, and `pnpm build`; expect tests passing and both applications building.
+- [x] Commit the workspace foundation and contracts as `chore: establish movie tracker workspace`.
 
 ## Task 2: Database model and enforceable invariants
 
@@ -210,3 +210,10 @@ Use UUID application IDs, case-normalized usernames, ISO timestamps, and bounded
 Review this plan before implementation. Recommended approach: native execution, because the tasks depend closely on shared authentication, privacy, and transport interfaces, and the first release is one small application. Independent review should pay particular attention to private access and aggregate eligibility.
 
 The user can instead choose subagent-driven execution with task-by-task implementation and review. No implementation begins until the user reviews the plan and selects the execution approach.
+
+## Execution progress
+
+The user selected subagent-driven execution with one task per request.
+
+- Task 1 complete: foundation commit `30246d0`, lint correction `4d8903e`. Independent spec/code-quality review approved; correction re-reviewed and approved. Tests: 26 passing; typecheck, root/frontend lint, builds, frozen install, local HTTP startup, missing-configuration behavior, and Compose syntax checks passed.
+- Tasks 2–12 remain pending. No external deployment has been performed.
