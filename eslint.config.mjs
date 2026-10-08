@@ -1,3 +1,4 @@
+import { fileURLToPath, URL } from 'node:url';
 import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import next from '@next/eslint-plugin-next';
@@ -15,6 +16,6 @@ export default tseslint.config(
       ...next.configs['core-web-vitals'].rules,
       ...reactHooks.configs.recommended.rules,
     },
-    settings: { next: { rootDir: 'apps/web/' } },
+    settings: { next: { rootDir: fileURLToPath(new URL('./apps/web/', import.meta.url)) } },
   },
 );
