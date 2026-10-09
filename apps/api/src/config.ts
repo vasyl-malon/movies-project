@@ -6,6 +6,7 @@ export interface ApiConfig {
   port: number;
   smtpPort?: number;
   authBaseUrl?: string;
+  proxySharedSecret?: string;
   nodeEnv: 'development' | 'test' | 'production';
 }
 
@@ -27,6 +28,8 @@ export function validateEnvironment(env: Record<string, string | undefined>): Ap
   } catch { invalid.push('DATABASE_URL'); }
 
   const betterAuthSecret = env.BETTER_AUTH_SECRET ?? '';
+  const proxySharedSecret = env.PROXY_SHARED_SECRET;
+  if (proxySharedSecret !== undefined && proxySharedSecret.trim().length < 32) invalid.push('PROXY_SHARED_SECRET');
   if (betterAuthSecret.trim().length < 32) invalid.push('BETTER_AUTH_SECRET');
 
   const omdbApiKey = env.OMDB_API_KEY ?? '';
@@ -56,5 +59,5 @@ export function validateEnvironment(env: Record<string, string | undefined>): Ap
   } catch { invalid.push('BETTER_AUTH_URL'); }
   if (nodeEnv === 'production') invalid.push('EMAIL_PROVIDER (production delivery is not configured)');
   if (invalid.length) throw new ConfigurationError(invalid);
-  return { smtpPort, authBaseUrl, databaseUrl, betterAuthSecret, omdbApiKey, frontendOrigin, port, nodeEnv: nodeEnv as ApiConfig['nodeEnv'] };
+  return { smtpPort, authBaseUrl, proxySharedSecret, databaseUrl, betterAuthSecret, omdbApiKey, frontendOrigin, port, nodeEnv: nodeEnv as ApiConfig['nodeEnv'] };
 }
