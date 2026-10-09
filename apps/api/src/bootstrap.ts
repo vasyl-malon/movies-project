@@ -3,6 +3,8 @@ import type { INestApplication } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { Module } from '@nestjs/common';
 import { AuthModule } from './modules/auth/auth.module.js';
+import { ProfilesModule } from './modules/profiles/profiles.module.js';
+import { FriendsModule } from './modules/friends/friends.module.js';
 import { AppModule } from './app.module.js';
 import { HttpErrorFilter } from './common/http-errors.js';
 import { createValidationPipe } from './common/validation.js';
@@ -15,7 +17,7 @@ export function configureApplication(app: INestApplication, config: ApiConfig): 
 }
 
 export async function createApplication(config: ApiConfig): Promise<INestApplication> {
-  @Module({ imports: [AppModule, AuthModule.register(config)] })
+  @Module({ imports: [AppModule, AuthModule.register(config), ProfilesModule, FriendsModule] })
   class RuntimeModule {}
   const app = await NestFactory.create(RuntimeModule, { logger: false, abortOnError: false });
   configureApplication(app, config);

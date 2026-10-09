@@ -9,7 +9,7 @@ import type { EmailService } from '../email/email.service.js';
 export function createAuth(config: ApiConfig, db: PrismaService, email: EmailService): ReturnType<typeof betterAuth> {
   const options: BetterAuthOptions = {
     baseURL: config.authBaseUrl ?? `http://localhost:${config.port}`,
-    disabledPaths: ['/is-username-available', '/sign-in/username'],
+    disabledPaths: ['/is-username-available', '/sign-in/username', '/update-user'],
     basePath: '/api/auth', secret: config.betterAuthSecret,
     trustedOrigins: [config.frontendOrigin],
     database: prismaAdapter(db, { provider: 'postgresql', transaction: true }),
@@ -24,7 +24,7 @@ export function createAuth(config: ApiConfig, db: PrismaService, email: EmailSer
     },
     session: { cookieCache: { enabled: false } },
     user: { additionalFields: { avatar: { type: 'string', required: false, input: false } } },
-    plugins: [username({ displayUsername: false })],
+    plugins: [username({ displayUsername: false, validationOrder: { username: 'post-normalization' }, minUsernameLength: 3, maxUsernameLength: 30, usernameNormalization: value => value.toLowerCase(), usernameValidator: value => /^[a-z0-9_]{3,30}$/.test(value) })],
     rateLimit: { enabled: false }, // Atomic persistent limits are applied before the Node handler.
     advanced: { disableCSRFCheck: false, disableOriginCheck: false, database: { generateId: () => randomUUID() }, useSecureCookies: config.nodeEnv === 'production', ipAddress: { disableIpTracking: true } },
     logger: { disabled: true },

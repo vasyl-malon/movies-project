@@ -8,17 +8,18 @@ import { AUTH, createAuth } from './auth.config.js';
 import { AuthController } from './auth.controller.js';
 import { SessionGuard } from './session.guard.js';
 import { RateLimitService } from '../../common/rate-limit.service.js';
+import { MutationOriginGuard } from './mutation-origin.guard.js';
 import { PROXY_CONFIG } from '../../common/proxy-trust.js';
 
 @Module({})
 export class AuthModule {
   static register(config: ApiConfig): DynamicModule {
-    return { module: AuthModule, imports: [EmailModule.register(config)], controllers: [AuthController],
+    return { module: AuthModule, global: true, imports: [EmailModule.register(config)], controllers: [AuthController],
       providers: [
         { provide: PROXY_CONFIG, useValue: config.proxySharedSecret ?? null },
         { provide: PrismaService, useFactory: () => new PrismaService(new PrismaPg({ connectionString: config.databaseUrl })) },
         { provide: AUTH, useFactory: (db: PrismaService, email: EmailService) => createAuth(config, db, email), inject: [PrismaService, EmailService] },
-        RateLimitService, SessionGuard,
-      ], exports: [AUTH, SessionGuard] };
+        RateLimitService, SessionGuard, MutationOriginGuard,
+      ], exports: [AUTH, SessionGuard, MutationOriginGuard, PrismaService, RateLimitService, PROXY_CONFIG] };
   }
 }
