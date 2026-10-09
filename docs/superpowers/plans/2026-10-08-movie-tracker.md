@@ -85,11 +85,11 @@ Use UUID application IDs, case-normalized usernames, ISO timestamps, and bounded
 
 **Interfaces:** Produces Better Auth routes under `/api/auth/*`, `SessionGuard`, `AuthenticatedUser { id: string }`, and `EmailService.send(message): Promise<void>`. `RateLimitService.consume(key, limit, windowSeconds): Promise<boolean>` uses atomic PostgreSQL operations. Fixtures add `createVerifiedUserClient()` and development-mail retrieval.
 
-- [ ] Add integration tests for verification-required sign-in, successful verification/session creation, logout, expired sessions, expired/single-use reset links, reset invalidating prior sessions, and identical reset-request responses for known/unknown emails. Confirm failure.
-- [ ] Integrate Better Auth through its supported Node handler and Prisma adapter. Use database sessions, disable unnecessary session-cookie caching, add secure cookies and trusted-origin configuration, and enforce verification. Apply persistent limits: 10 authentication attempts per minute per IP and 3 email-send requests per 15 minutes per normalized account key.
-- [ ] Implement a local development inbox using Mailpit through Compose. The email interface carries recipient, subject, and message content. Production configuration must reject the development provider and unconfigured real delivery; never expose reset tokens in public API responses or deployed logs.
-- [ ] Run `pnpm --filter @tracker/api test -- auth.spec.ts`; expect all auth transitions and throttling tests to pass. Ensure asynchronous delivery remains awaited or supported by the function runtime so messages are not discarded on response completion.
-- [ ] Commit as `feat: add verified session authentication`.
+- [x] Add integration tests for verification-required sign-in, successful verification/session creation, logout, expired sessions, expired/single-use reset links, reset invalidating prior sessions, and identical reset-request responses for known/unknown emails. Confirm failure.
+- [x] Integrate Better Auth through its supported Node handler and Prisma adapter. Use database sessions, disable unnecessary session-cookie caching, add secure cookies and trusted-origin configuration, and enforce verification. Apply persistent limits: 10 authentication attempts per minute per IP and 3 email-send requests per 15 minutes per normalized account key.
+- [x] Implement a local development inbox using Mailpit through Compose. The email interface carries recipient, subject, and message content. Production configuration must reject the development provider and unconfigured real delivery; never expose reset tokens in public API responses or deployed logs.
+- [x] Run `pnpm --filter @tracker/api test -- auth.spec.ts`; expect all auth transitions and throttling tests to pass. Ensure asynchronous delivery remains awaited or supported by the function runtime so messages are not discarded on response completion.
+- [x] Commit as `feat: add verified session authentication`.
 
 ## Task 4: Same-origin frontend API transport
 
@@ -221,3 +221,7 @@ The user selected subagent-driven execution with one task per request.
 ### Task 2 completion — 2026-10-09
 
 Implemented database models, reviewed SQL integrity constraints, Prisma module, and isolated PostgreSQL fixtures. Commits `397dfa9` and `66b4948`. Full suite: 41 tests passing, including 15 database tests; typecheck, lint, and build passed. Review improvement verified with 15 focused tests plus API typecheck and lint. Independent review approved implementation and fix. Tests used temporary PostgreSQL 14.19 because Docker was unavailable; PostgreSQL 17 deployment validation remains required. Task 3 must configure UUID auth generation; Task 5 must normalize usernames to lowercase, with case-insensitive database uniqueness already enforced.
+
+### Task 3 completion — 2026-10-09
+
+Branch `feat/task-3-authentication` starts at merged develop `e4fcf17`. Commits `8581180` and `b33f8f0` add verified Better Auth sessions, UUID identity, reset revocation, persistent throttling, SessionGuard, and awaited Mailpit email delivery. Full isolated suite: 59/59 tests, including 17 authentication tests and 15 integrity tests; typecheck, lint and builds passed. Independent review approved implementation and scoped Neon inbox startup fix. Root user environment and Neon database were unchanged. Production email delivery remains unavailable pending real provider/domain setup. Task 4 must establish trusted client-IP forwarding; future domain routes must apply SessionGuard. Sanitized email diagnostics and reset timing hardening remain production-launch work.
