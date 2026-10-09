@@ -3,7 +3,7 @@ services:
     image: postgres:17-alpine
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-tracker}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local-placeholder-password}
       POSTGRES_DB: ${POSTGRES_DB:-tracker}
     ports:
       - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"

@@ -25,6 +25,8 @@ The root `.env` is loaded only by the API launch scripts and Docker Compose. Kee
 
 ## Authentication and local inbox
 
+If you use Neon for PostgreSQL, keep your Neon `DATABASE_URL` in the root `.env` and start only the local inbox with `docker compose up -d mailpit`. Local PostgreSQL settings are optional for that workflow; Compose defaults its unused localhost-only database password to a development placeholder.
+
 The API exposes Better Auth at `/api/auth/*`. Register with email, password, name and username at `POST /api/auth/sign-up/email`; sign-in requires email verification. Verification and password-reset links arrive at the local Mailpit inbox, http://localhost:8025. SMTP delivery is awaited and never sent outside loopback by the development provider. `SMTP_PORT` defaults to 1025; `MAILPIT_HTTP_PORT` controls the Compose inbox port. `BETTER_AUTH_URL` sets the external API origin and defaults to http://localhost:3001. Mutation requests must send the configured `FRONTEND_ORIGIN` in their `Origin` header; redirect/callback URLs must also be trusted.
 
 Sessions persist in PostgreSQL. Logout and completed password resets invalidate them, and guards check the database afresh. Authentication mutations allow 10 requests/minute per socket IP; signup and explicit email requests share 3 requests/15 minutes per normalized email. Rate counters persist across server instances. Forwarded headers are not trusted; any future frontend/proxy integration must establish a trusted proxy contract before preserving client IPs. Otherwise the proxy shares a socket-IP bucket.
