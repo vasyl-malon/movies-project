@@ -33,7 +33,9 @@ suite('PostgreSQL integrity', () => {
   it('rejects duplicate user/media entries concurrently', async () => {
     const results = await Promise.allSettled([insertEntry(), insertEntry()]);
     expect(results.filter(r => r.status === 'fulfilled')).toHaveLength(1);
-    expect(results.filter(r => r.status === 'rejected')).toHaveLength(1);
+    const rejected = results.filter(r => r.status === 'rejected');
+    expect(rejected).toHaveLength(1);
+    expect(rejected[0]?.reason).toMatchObject({ code: '23505' });
   });
   it('rejects duplicate user/season entries', async () => {
     await insertEntry({ mediaId: null, seasonId: season });
@@ -73,6 +75,9 @@ suite('PostgreSQL integrity', () => {
     const request = (a: string, b: string, requester: string) => db.query('INSERT INTO "Friendship" (id,"userLowId","userHighId","requesterId") VALUES ($1,$2,$3,$4)', [randomUUID(), a, b, requester]);
     const results = await Promise.allSettled([request(low!, high!, user), request(low!, high!, other)]);
     expect(results.filter(r => r.status === 'fulfilled')).toHaveLength(1);
+    const rejected = results.filter(r => r.status === 'rejected');
+    expect(rejected).toHaveLength(1);
+    expect(rejected[0]?.reason).toMatchObject({ code: '23505' });
     await expect(request(high!, low!, user)).rejects.toMatchObject({ code: '23514' });
     await expect(request(user, user, user)).rejects.toMatchObject({ code: '23514' });
     await expect(request(low!, high!, randomUUID())).rejects.toMatchObject({ code: '23514' });
