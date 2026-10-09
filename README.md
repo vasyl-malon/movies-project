@@ -59,6 +59,8 @@ node scripts/task4-local-services.mjs cleanup /private/tmp/tracker-task4-<id>/se
 
 The first command prints the actual manifest path. It creates new loopback PostgreSQL `_test` databases and dedicated API/Next/Mailpit ports, migrates only those databases, and starts Next from an exact disposable copy of current frontend source with installed workspace dependencies. This avoids user Next dev locks, env files, and caches. It never loads root `.env`, sends real mail, calls OMDb, or falls back to a production database. Smoke checks exercise registration, local verification mail, redirects, session cookies, fresh session reads, hostile Origin rejection, logout/revocation, and signed-IP quota separation. Checks run the complete workspace test/typecheck/lint/build commands with explicit isolated settings; logs remain beside the manifest. Services remain running until the explicit cleanup command.
 
+Session smoke selects fresh signed test IPs on every invocation. Its real browser proxy still shares the deliberate local loopback quota (10 auth mutations/minute), so wait at least 60 seconds between session-smoke invocations when reusing a service manifest. Cleanup records and verifies each process's full command, start time and process group, and verifies the PostgreSQL master/PID file before signaling. Stale or mismatched identities are refused; legacy PID-only manifests are refused rather than guessed. A successful cleanup marks the manifest, and repeating it is a safe no-op. `node --test scripts/task4-cleanup.test.mjs` checks this behavior using harmless child processes.
+
 ## Checks and production builds
 
 ```sh

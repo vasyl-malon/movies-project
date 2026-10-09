@@ -3,16 +3,12 @@ import { existsSync, mkdtempSync, openSync, writeFileSync, readFileSync, cpSync,
 import { createServer } from 'node:net';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { cleanupServices, processIdentity } from './task4-cleanup.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const pgBin = process.env.PG_BIN_DIR ?? '/opt/homebrew/opt/postgresql@14/bin';
 if (process.argv[2] === 'cleanup') {
-  const file = resolve(process.argv[3] ?? '');
-  const state = JSON.parse(readFileSync(file, 'utf8'));
-  if (!state.directory.startsWith('/private/tmp/tracker-task4-') || file !== `${state.directory}/services.json`) throw new Error('Expected an isolated Task 4 service manifest');
-  for (const pid of state.pids) { try { process.kill(-pid, 'SIGTERM'); } catch { /* Already stopped. */ } }
-  const stopped = spawnSync(`${state.pgBin}/pg_ctl`, ['-D', `${state.directory}/pg`, '-m', 'fast', 'stop'], { stdio: 'inherit' });
-  process.exitCode = stopped.status ?? 1;
+  await cleanupServices(process.argv[3] ?? '');
 } else {
   const mailpit = process.env.MAILPIT_BIN ?? '/private/tmp/tracker-mailpit/mailpit';
   if (!existsSync(`${pgBin}/initdb`) || !existsSync(mailpit)) throw new Error('Set PG_BIN_DIR and MAILPIT_BIN to installed local PostgreSQL and Mailpit');
@@ -49,7 +45,7 @@ if (process.argv[2] === 'cleanup') {
   const mailOrigin = `http://127.0.0.1:${mailPort}`;
   const proxySecret = 'isolated-task4-proxy-secret-at-least-32-characters';
   const pids = [];
-  const state = { directory, pgBin, pids, databasePort, smtpPort, testDatabaseUrl, smokeDatabaseUrl, frontendOrigin, apiOrigin, mailOrigin };
+  const state = { directory, pgBin, pids, processes: [], postgres: null, databasePort, smtpPort, testDatabaseUrl, smokeDatabaseUrl, frontendOrigin, apiOrigin, mailOrigin };
   const manifest = `${directory}/services.json`;
   const save = () => writeFileSync(manifest, `${JSON.stringify(state, null, 2)}\n`);
   save();
@@ -61,7 +57,10 @@ if (process.argv[2] === 'cleanup') {
   function start(command, args, name, extra = {}, cwd = root) {
     const log = openSync(`${directory}/${name}.log`, 'a');
     const child = spawn(command, args, { cwd, env: { ...env, ...extra }, detached: true, stdio: ['ignore', log, log] });
-    child.unref(); pids.push(child.pid); save();
+    child.unref(); pids.push(child.pid);
+    const identity = processIdentity(child.pid);
+    if (!identity || identity.pgid !== child.pid || !identity.command.includes(directory)) throw new Error('Cannot establish isolated service ownership');
+    state.processes.push(identity); save();
   }
   async function ready(url) {
     for (let attempts = 0; attempts < 120; attempts++) {
@@ -73,19 +72,21 @@ if (process.argv[2] === 'cleanup') {
   try {
     run(`${pgBin}/initdb`, ['-D', `${directory}/pg`, '--auth=trust', '--username=tracker']);
     run(`${pgBin}/pg_ctl`, ['-D', `${directory}/pg`, '-l', `${directory}/postgres.log`, '-o', `-h 127.0.0.1 -p ${databasePort}`, 'start']);
+    state.postgres = processIdentity(Number(readFileSync(`${directory}/pg/postmaster.pid`, 'utf8').split('\n')[0]));
+    if (!state.postgres?.command.includes(`${directory}/pg`)) throw new Error('Cannot establish isolated PostgreSQL ownership');
+    save();
     for (const name of ['tracker_task4_test', 'tracker_task4_smoke_test']) run(`${pgBin}/createdb`, ['-h', '127.0.0.1', '-p', `${databasePort}`, '-U', 'tracker', name]);
     run('pnpm', ['--filter', '@tracker/api', 'build']);
     for (const url of [testDatabaseUrl, smokeDatabaseUrl]) run('pnpm', ['--filter', '@tracker/api', 'exec', 'prisma', 'migrate', 'deploy'], { DATABASE_URL: url });
-    start(mailpit, ['--disable-version-check', '--smtp-disable-rdns', '--listen', `127.0.0.1:${mailPort}`, '--smtp', `127.0.0.1:${smtpPort}`], 'mailpit');
-    start(process.execPath, [`${root}/scripts/task4-api-server.mjs`], 'api', { DATABASE_URL: smokeDatabaseUrl, BETTER_AUTH_SECRET: 'isolated-task4-auth-secret-at-least-32-characters', OMDB_API_KEY: 'unused-test-placeholder', FRONTEND_ORIGIN: frontendOrigin, BETTER_AUTH_URL: frontendOrigin, PROXY_SHARED_SECRET: proxySecret, PORT: `${apiPort}`, SMTP_PORT: `${smtpPort}` });
+    start(mailpit, ['--disable-version-check', '--smtp-disable-rdns', '--database', `${directory}/mailpit.db`, '--listen', `127.0.0.1:${mailPort}`, '--smtp', `127.0.0.1:${smtpPort}`], 'mailpit');
+    start(process.execPath, [`${root}/scripts/task4-api-server.mjs`, `--task4-directory=${directory}`], 'api', { DATABASE_URL: smokeDatabaseUrl, BETTER_AUTH_SECRET: 'isolated-task4-auth-secret-at-least-32-characters', OMDB_API_KEY: 'unused-test-placeholder', FRONTEND_ORIGIN: frontendOrigin, BETTER_AUTH_URL: frontendOrigin, PROXY_SHARED_SECRET: proxySecret, PORT: `${apiPort}`, SMTP_PORT: `${smtpPort}` });
     start(process.execPath, [`${webDirectory}/node_modules/next/dist/bin/next`, 'dev', '--webpack', '--hostname', '127.0.0.1', '--port', `${webPort}`], 'next', { API_BASE_URL: apiOrigin, PROXY_SHARED_SECRET: proxySecret }, webDirectory);
     await ready(`${mailOrigin}/api/v1/messages`); await ready(`${apiOrigin}/health`); await ready(frontendOrigin);
     console.info(`Isolated services ready. Manifest: ${manifest}`);
     console.info('Services remain running for review. Clean up with node scripts/task4-local-services.mjs cleanup <manifest>.');
   } catch (error) {
     console.error(error.message);
-    for (const pid of pids) { try { process.kill(-pid, 'SIGTERM'); } catch { /* Already stopped. */ } }
-    spawnSync(`${pgBin}/pg_ctl`, ['-D', `${directory}/pg`, '-m', 'fast', 'stop'], { env });
+    try { await cleanupServices(manifest); } catch (cleanupError) { console.error(cleanupError.message); }
     process.exitCode = 1;
   }
 }

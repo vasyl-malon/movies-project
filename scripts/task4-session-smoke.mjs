@@ -51,7 +51,9 @@ const forged = await fetch(`${state.apiOrigin}/api/auth/sign-in/email`, { method
 assert.equal(forged.status, 403);
 // Distinct authenticated proxy IPs do not consume a shared socket bucket.
 const proxySecret = 'isolated-task4-proxy-secret-at-least-32-characters';
-for (const ip of ['198.51.100.10', '198.51.100.11']) {
+// Fresh documentation-range IPv6 addresses avoid quota state from earlier invocations.
+const signedIps = Array.from({ length: 2 }, () => `2001:db8:${randomUUID().replaceAll('-', '').slice(0, 24).match(/.{4}/g).join(':')}`);
+for (const ip of signedIps) {
   for (let attempt = 0; attempt < 11; attempt++) {
     const time = `${Math.floor(Date.now() / 1000)}`;
     const path = '/api/auth/sign-in/email';
