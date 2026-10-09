@@ -1,6 +1,8 @@
 import 'reflect-metadata';
 import type { INestApplication } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { Module } from '@nestjs/common';
+import { AuthModule } from './modules/auth/auth.module.js';
 import { AppModule } from './app.module.js';
 import { HttpErrorFilter } from './common/http-errors.js';
 import { createValidationPipe } from './common/validation.js';
@@ -13,7 +15,9 @@ export function configureApplication(app: INestApplication, config: ApiConfig): 
 }
 
 export async function createApplication(config: ApiConfig): Promise<INestApplication> {
-  const app = await NestFactory.create(AppModule, { logger: false, abortOnError: false });
+  @Module({ imports: [AppModule, AuthModule.register(config)] })
+  class RuntimeModule {}
+  const app = await NestFactory.create(RuntimeModule, { logger: false, abortOnError: false });
   configureApplication(app, config);
   return app;
 }

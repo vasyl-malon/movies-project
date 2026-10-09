@@ -4,6 +4,8 @@ export interface ApiConfig {
   omdbApiKey: string;
   frontendOrigin: string;
   port: number;
+  smtpPort?: number;
+  authBaseUrl?: string;
   nodeEnv: 'development' | 'test' | 'production';
 }
 
@@ -45,6 +47,14 @@ export function validateEnvironment(env: Record<string, string | undefined>): Ap
   const nodeEnv = env.NODE_ENV ?? 'development';
   if (!['development', 'test', 'production'].includes(nodeEnv)) invalid.push('NODE_ENV');
 
+  const smtpPort = Number(env.SMTP_PORT ?? '1025');
+  if (!Number.isInteger(smtpPort) || smtpPort < 1 || smtpPort > 65535) invalid.push('SMTP_PORT');
+  const authBaseUrl = env.BETTER_AUTH_URL ?? `http://localhost:${port}`;
+  try {
+    const url = new URL(authBaseUrl);
+    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.pathname !== '/' || url.search || url.hash || (nodeEnv === 'production' && url.protocol !== 'https:')) invalid.push('BETTER_AUTH_URL');
+  } catch { invalid.push('BETTER_AUTH_URL'); }
+  if (nodeEnv === 'production') invalid.push('EMAIL_PROVIDER (production delivery is not configured)');
   if (invalid.length) throw new ConfigurationError(invalid);
-  return { databaseUrl, betterAuthSecret, omdbApiKey, frontendOrigin, port, nodeEnv: nodeEnv as ApiConfig['nodeEnv'] };
+  return { smtpPort, authBaseUrl, databaseUrl, betterAuthSecret, omdbApiKey, frontendOrigin, port, nodeEnv: nodeEnv as ApiConfig['nodeEnv'] };
 }

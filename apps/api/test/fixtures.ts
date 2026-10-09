@@ -1,4 +1,6 @@
 import 'reflect-metadata';
+import request from 'supertest';
+import type { INestApplication } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { Test } from '@nestjs/testing';
 import { PrismaPg } from '@prisma/adapter-pg';
@@ -52,4 +54,27 @@ export async function createTestApp() {
   configureApplication(app, testConfig);
   await app.init();
   return app;
+}
+
+/** Read only the loopback development inbox, never a public mail service. */
+export async function retrieveDevelopmentMail(email: string, subject: string, inboxUrl = 'http://127.0.0.1:8025'): Promise<URL> {
+  const inbox = new URL(inboxUrl);
+  if (inbox.hostname !== '127.0.0.1' || inbox.protocol !== 'http:') throw new Error('Development inbox must be loopback HTTP');
+  const list = await (await fetch(`${inbox.origin}/api/v1/messages`)).json() as { messages: { ID: string; To: { Address: string }[]; Subject: string }[] };
+  const item = list.messages.find(m => m.To.some(t => t.Address === email) && m.Subject.includes(subject));
+  if (!item) throw new Error('Expected development message was not delivered');
+  const message = await (await fetch(`${inbox.origin}/api/v1/message/${item.ID}`)).json() as { Text: string };
+  const link = message.Text.match(/https?:\/\/\S+/)?.[0];
+  if (!link) throw new Error('Development message is missing its link');
+  return new URL(link);
+}
+
+export async function createVerifiedUserClient(app: INestApplication, email = `${randomUUID()}@example.test`, inboxUrl?: string) {
+  const client = request.agent(app.getHttpServer());
+  const password = 'test-password-1234';
+  await client.post('/api/auth/sign-up/email').set('Origin', testConfig.frontendOrigin).send({ email, password, name: 'Test User', username: `user${randomUUID().replaceAll('-', '').slice(0, 20)}` }).expect(200);
+  const link = await retrieveDevelopmentMail(email, 'Verify', inboxUrl);
+  await client.get(link.pathname + link.search).expect(302);
+  await client.post('/api/auth/sign-in/email').set('Origin', testConfig.frontendOrigin).send({ email, password }).expect(200);
+  return { client, email, password };
 }

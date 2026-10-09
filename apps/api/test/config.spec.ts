@@ -44,6 +44,9 @@ describe('backend configuration', () => {
   });
 
   it('accepts an explicit port and HTTPS trusted origin', () => {
-    expect(validateEnvironment({ ...valid, PORT: '4100', NODE_ENV: 'production', FRONTEND_ORIGIN: 'https://tracker.example' })).toMatchObject({ port: 4100, nodeEnv: 'production', frontendOrigin: 'https://tracker.example' });
+    expect(validateEnvironment({ ...valid, PORT: '4100', NODE_ENV: 'development', FRONTEND_ORIGIN: 'https://tracker.example' })).toMatchObject({ port: 4100, nodeEnv: 'development', frontendOrigin: 'https://tracker.example' });
+  });
+  it('rejects deployed authentication before a real email provider exists', () => {
+    expect(() => validateEnvironment({ ...valid, NODE_ENV: 'production', BETTER_AUTH_URL: 'https://api.tracker.example', FRONTEND_ORIGIN: 'https://tracker.example' })).toThrow('EMAIL_PROVIDER');
   });
 });
