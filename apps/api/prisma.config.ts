@@ -3,7 +3,8 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'prisma/config';
 
 const envFile = fileURLToPath(new URL('../../.env', import.meta.url));
-if (existsSync(envFile)) process.loadEnvFile(envFile);
+// Explicit release/test configuration takes precedence and avoids reading local secrets.
+if (!process.env.DATABASE_URL && existsSync(envFile)) process.loadEnvFile(envFile);
 
 export default defineConfig({
   schema: 'prisma/schema.prisma',

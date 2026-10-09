@@ -97,11 +97,11 @@ Use UUID application IDs, case-normalized usernames, ISO timestamps, and bounded
 
 **Interfaces:** Produces `apiFetch<T>(path, options): Promise<T>`, frontend query provider, and forwarding for API GET/POST/PATCH/DELETE requests. The client uses `/api`; `API_BASE_URL` is server-only and fixed by environment.
 
-- [ ] Test cookie/request-body forwarding, multiple Set-Cookie preservation, backend non-JSON failures, malicious arbitrary destinations, absent sessions, and upstream timeouts. Confirm failures before implementing the route/client.
-- [ ] Implement a fixed-origin forwarding route, validate supported paths/methods, strip hop-by-hop and spoofed forwarding headers, preserve frontend origin for authentication checks, and disable shared caching. Return structured errors for unreachable upstreams; never retry write requests automatically.
-- [ ] Implement `apiFetch` with same-origin cookies, typed errors, request cancellation, and session-expiry handling. Create a fresh query client per browser session; clear private query data on logout.
-- [ ] Run `pnpm --filter @tracker/web test -- proxy.test.ts api-client.test.ts`; expect forwarding/security cases to pass. Add and run a local end-to-end session-cookie smoke check through Next.js to catch header behavior mocks miss.
-- [ ] Commit as `feat: connect frontend to same-origin authenticated API`.
+- [x] Test cookie/request-body forwarding, multiple Set-Cookie preservation, backend non-JSON failures, malicious arbitrary destinations, absent sessions, and upstream timeouts. Confirm failures before implementing the route/client.
+- [x] Implement a fixed-origin forwarding route, validate supported paths/methods, strip hop-by-hop and spoofed forwarding headers, preserve frontend origin for authentication checks, and disable shared caching. Return structured errors for unreachable upstreams; never retry write requests automatically.
+- [x] Implement `apiFetch` with same-origin cookies, typed errors, request cancellation, and session-expiry handling. Create a fresh query client per browser session; clear private query data on logout.
+- [x] Run `pnpm --filter @tracker/web test -- proxy.test.ts api-client.test.ts`; expect forwarding/security cases to pass. Add and run a local end-to-end session-cookie smoke check through Next.js to catch header behavior mocks miss.
+- [x] Commit as `feat: connect frontend to same-origin authenticated API`.
 
 ## Task 5: Profiles, friendship lifecycle, and access policy
 
@@ -225,3 +225,9 @@ Implemented database models, reviewed SQL integrity constraints, Prisma module, 
 ### Task 3 completion — 2026-10-09
 
 Branch `feat/task-3-authentication` starts at merged develop `e4fcf17`. Commits `8581180` and `b33f8f0` add verified Better Auth sessions, UUID identity, reset revocation, persistent throttling, SessionGuard, and awaited Mailpit email delivery. Full isolated suite: 59/59 tests, including 17 authentication tests and 15 integrity tests; typecheck, lint and builds passed. Independent review approved implementation and scoped Neon inbox startup fix. Root user environment and Neon database were unchanged. Production email delivery remains unavailable pending real provider/domain setup. Task 4 must establish trusted client-IP forwarding; future domain routes must apply SessionGuard. Sanitized email diagnostics and reset timing hardening remain production-launch work.
+
+### Task 4 completion — 2026-10-09
+
+Branch `feat/task-4-api-transport` starts at merged develop `9c58838`. Commits `6df2d60` and `908296d` add the fixed-origin forwarding route, typed API client, session-aware query provider and signed client-IP contract. Final verification passed 114 tests (42 web, 72 API), typecheck, lint, builds, and real Next session/header smokes. Eight additional cleanup tests and scoped lint passed; independent implementation and tooling re-reviews approved. Temporary services stopped with verified process identities; user Next server, Neon and existing environment files unchanged. Setup requires matching server-only `PROXY_SHARED_SECRET` in backend and frontend, frontend `API_BASE_URL`, and frontend browser origin configuration; see README.
+
+One earlier unchanged schema setup hook timed out and later full verification passed; its cause is unknown, so capture live database waits if it recurs. Before Task 5, reconcile current auth-valid dotted usernames with the planned profile format. During deployment, verify actual Vercel client-IP headers; production delivery remains a separate launch dependency.
