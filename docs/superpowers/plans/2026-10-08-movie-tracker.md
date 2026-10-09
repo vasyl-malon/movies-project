@@ -61,11 +61,11 @@ Use UUID application IDs, case-normalized usernames, ISO timestamps, and bounded
 
 **Interfaces:** Produces shared contracts, `GET /health -> { status: 'ok' }`, and scripts `dev`, `build`, `typecheck`, `lint`, `test`. Vitest powers backend behavior tests; local PostgreSQL uses Docker Compose.
 
-- [ ] Select stable mutually compatible package versions supported by Vercel, confirm them against official documentation, scaffold the workspace, and commit the lockfile. Initialize Git only if still absent. Keep secrets out of tracked files.
-- [ ] Add the health integration test: `expect((await request(app).get('/health')).body).toEqual({ status: 'ok' })`. Confirm failure before adding the controller.
-- [ ] Implement health routing, configuration validation, and common validation/error handling; bootstrap API and frontend on separate local ports. Reject missing backend secrets with named configuration errors that never print their values.
-- [ ] Run `pnpm --filter @tracker/api test -- health.spec.ts`, `pnpm typecheck`, and `pnpm build`; expect tests passing and both applications building.
-- [ ] Commit the workspace foundation and contracts as `chore: establish movie tracker workspace`.
+- [x] Select stable mutually compatible package versions supported by Vercel, confirm them against official documentation, scaffold the workspace, and commit the lockfile. Initialize Git only if still absent. Keep secrets out of tracked files.
+- [x] Add the health integration test: `expect((await request(app).get('/health')).body).toEqual({ status: 'ok' })`. Confirm failure before adding the controller.
+- [x] Implement health routing, configuration validation, and common validation/error handling; bootstrap API and frontend on separate local ports. Reject missing backend secrets with named configuration errors that never print their values.
+- [x] Run `pnpm --filter @tracker/api test -- health.spec.ts`, `pnpm typecheck`, and `pnpm build`; expect tests passing and both applications building.
+- [x] Commit the workspace foundation and contracts as `chore: establish movie tracker workspace`.
 
 ## Task 2: Database model and enforceable invariants
 
@@ -73,11 +73,11 @@ Use UUID application IDs, case-normalized usernames, ISO timestamps, and bounded
 
 **Interfaces:** Produces Prisma models `User`, `Account`, `Session`, `Verification`, `Media`, `Season`, `WatchEntry`, `Friendship`, `Activity`, `RateLimit`, and `MediaCache`. Test fixtures expose `createUser`, `createMedia`, `createSeason`, `resetDatabase`, and `createTestApp`; later tasks extend them with authenticated HTTP clients.
 
-- [ ] Add schema tests asserting two identical user/target entries reject, exactly one target is required, season identity is unique, a rating of 0/11/fractional is rejected, and Plan to Watch cannot contain a rating. Run the tests and confirm they fail against the initial database.
-- [ ] Define the Better Auth required models from its installed version, application relations, and delete behavior. Add SQL CHECK constraints for entry targets, rating/status compatibility, and season numbering; add unique constraints for usernames, entries, and normalized friendship pairs. Prefer a SQL `DATE` for completion dates.
-- [ ] Add indexed friendship lookup, owner/status/date entry lookup, activity actor/time lookup, and media/season uniqueness. Cascade entry deletion to its activity and user deletion to their private records. Persist rate-limit/cache state for function instances.
-- [ ] Apply migrations to an isolated test database with `pnpm --filter @tracker/api exec prisma migrate deploy`; run `pnpm --filter @tracker/api test -- schema.spec.ts`; expect all constraints enforced, including concurrent inserts.
-- [ ] Commit as `feat: add tracker database and integrity constraints`.
+- [x] Add schema tests asserting two identical user/target entries reject, exactly one target is required, season identity is unique, a rating of 0/11/fractional is rejected, and Plan to Watch cannot contain a rating. Run the tests and confirm they fail against the initial database.
+- [x] Define the Better Auth required models from its installed version, application relations, and delete behavior. Add SQL CHECK constraints for entry targets, rating/status compatibility, and season numbering; add unique constraints for usernames, entries, and normalized friendship pairs. Prefer a SQL `DATE` for completion dates.
+- [x] Add indexed friendship lookup, owner/status/date entry lookup, activity actor/time lookup, and media/season uniqueness. Cascade entry deletion to its activity and user deletion to their private records. Persist rate-limit/cache state for function instances.
+- [x] Apply migrations to an isolated test database with `pnpm --filter @tracker/api exec prisma migrate deploy`; run `pnpm --filter @tracker/api test -- schema.spec.ts`; expect all constraints enforced, including concurrent inserts.
+- [x] Commit as `feat: add tracker database and integrity constraints`.
 
 ## Task 3: Authentication, profile identity, and development emails
 
@@ -210,3 +210,14 @@ Use UUID application IDs, case-normalized usernames, ISO timestamps, and bounded
 Review this plan before implementation. Recommended approach: native execution, because the tasks depend closely on shared authentication, privacy, and transport interfaces, and the first release is one small application. Independent review should pay particular attention to private access and aggregate eligibility.
 
 The user can instead choose subagent-driven execution with task-by-task implementation and review. No implementation begins until the user reviews the plan and selects the execution approach.
+
+## Execution progress
+
+The user selected subagent-driven execution with one task per request.
+
+- Task 1 complete: foundation commit `30246d0`, lint correction `4d8903e`. Independent spec/code-quality review approved; correction re-reviewed and approved. Tests: 26 passing; typecheck, root/frontend lint, builds, frozen install, local HTTP startup, missing-configuration behavior, and Compose syntax checks passed.
+- Tasks 2–12 remain pending. No external deployment has been performed.
+
+### Task 2 completion — 2026-10-09
+
+Implemented database models, reviewed SQL integrity constraints, Prisma module, and isolated PostgreSQL fixtures. Commits `397dfa9` and `66b4948`. Full suite: 41 tests passing, including 15 database tests; typecheck, lint, and build passed. Review improvement verified with 15 focused tests plus API typecheck and lint. Independent review approved implementation and fix. Tests used temporary PostgreSQL 14.19 because Docker was unavailable; PostgreSQL 17 deployment validation remains required. Task 3 must configure UUID auth generation; Task 5 must normalize usernames to lowercase, with case-insensitive database uniqueness already enforced.
