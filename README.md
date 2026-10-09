@@ -15,6 +15,7 @@ Replace the placeholders in `.env` with local configuration. Backend startup req
 
 ```sh
 docker compose up -d postgres
+pnpm --filter @tracker/api exec prisma migrate deploy
 pnpm dev
 ```
 
@@ -31,9 +32,9 @@ pnpm lint
 pnpm build
 ```
 
-Type checks generate the required Nest output and Next route types, so they work before the first build. The API test script first compiles the application, then runs Vitest against the emitted JavaScript. This exercises Nest's actual decorator metadata and runtime module format. The tests use local temporary HTTP sockets and placeholder service configuration; they require no database, OMDb connection, or real credentials. For a focused test, use `pnpm --filter @tracker/api test health.spec.ts`.
+Type checks generate the required Nest output and Next route types, so they work before the first build. The API test script first compiles the application, then runs Vitest against the emitted JavaScript. This exercises Nest's actual decorator metadata and runtime module format. The default tests use local temporary HTTP sockets and placeholder service configuration. PostgreSQL integrity tests run only when `TEST_DATABASE_URL` names a dedicated disposable database ending in `_test`; they truncate application tables in that database and never fall back to `DATABASE_URL`. Migrate that database first using `DATABASE_URL="$TEST_DATABASE_URL" pnpm --filter @tracker/api exec prisma migrate deploy`, then run `pnpm --filter @tracker/api test schema.spec.ts`. They require no OMDb connection or real credentials. For a focused test, use `pnpm --filter @tracker/api test health.spec.ts`.
 
-After building, start the API with `pnpm --filter @tracker/api start` and the frontend with `pnpm --filter @tracker/web start`. The API's `src/main.ts` follows Vercel's NestJS entrypoint convention; the applications can later be configured as separate Vercel projects. Deployment, authentication, database migrations, email delivery, and frontend API forwarding are later tasks. Before deployed registration opens, real verification/password-reset email delivery must be configured.
+After building, start the API with `pnpm --filter @tracker/api start` and the frontend with `pnpm --filter @tracker/web start`. The API's `src/main.ts` follows Vercel's NestJS entrypoint convention; the applications can later be configured as separate Vercel projects. Deployment, authentication routes, email delivery, and frontend API forwarding are later tasks. Prisma generation runs during API builds and needs no database connection. Migrations run explicitly through `prisma migrate deploy`, reading the root `.env` when present; they never run during API startup. Before deployed registration opens, real verification/password-reset email delivery must be configured.
 
 ## Workspace
 

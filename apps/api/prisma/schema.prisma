@@ -1,0 +1,199 @@
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum MediaType {
+  MOVIE
+  SERIES
+}
+
+enum WatchStatus {
+  PLAN_TO_WATCH
+  WATCHING
+  WATCHED
+  DROPPED
+}
+
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+}
+
+enum ActivityType {
+  STATUS
+  RATING
+  REVIEW
+}
+
+model User {
+  id              String       @id @default(uuid())
+  name            String
+  email           String       @unique
+  emailVerified   Boolean      @default(false)
+  image           String?
+  username        String
+  avatar          String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  accounts        Account[]
+  sessions        Session[]
+  entries         WatchEntry[]
+  activities      Activity[]
+  lowFriendships  Friendship[] @relation("LowUser")
+  highFriendships Friendship[] @relation("HighUser")
+}
+
+model Account {
+  id                    String    @id @default(uuid())
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Verification {
+  id         String   @id @default(uuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+}
+
+model Media {
+  id          String       @id @default(uuid())
+  imdbId      String       @unique
+  type        MediaType
+  title       String
+  releaseYear String?
+  posterUrl   String?
+  synopsis    String?
+  genres      String[]     @default([])
+  imdbRating  Decimal?
+  refreshedAt DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  seasons     Season[]
+  entries     WatchEntry[]
+
+  @@unique([id, type])
+}
+
+model Season {
+  id           String       @id @default(uuid())
+  mediaId      String
+  mediaType    MediaType    @default(SERIES)
+  media        Media        @relation(fields: [mediaId, mediaType], references: [id, type], onDelete: Cascade, onUpdate: Restrict)
+  seasonNumber Int
+  metadata     Json?
+  refreshedAt  DateTime?
+  createdAt    DateTime     @default(now())
+  entries      WatchEntry[]
+
+  @@unique([mediaId, seasonNumber])
+}
+
+model WatchEntry {
+  id          String      @id @default(uuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mediaId     String?
+  media       Media?      @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  seasonId    String?
+  season      Season?     @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  status      WatchStatus
+  // Numeric plus SQL integer CHECK rejects fractional SQL values instead of rounding them.
+  rating      Decimal?
+  review      String?
+  completedAt DateTime?   @db.Date
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @default(now()) @updatedAt
+  activities  Activity[]
+
+  @@unique([userId, mediaId])
+  @@unique([userId, seasonId])
+  @@index([userId, status, completedAt, id])
+  @@index([mediaId, status])
+  @@index([seasonId, status])
+}
+
+model Friendship {
+  id          String           @id @default(uuid())
+  userLowId   String
+  userHighId  String
+  requesterId String
+  userLow     User             @relation("LowUser", fields: [userLowId], references: [id], onDelete: Cascade)
+  userHigh    User             @relation("HighUser", fields: [userHighId], references: [id], onDelete: Cascade)
+  status      FriendshipStatus @default(PENDING)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @default(now()) @updatedAt
+
+  @@unique([userLowId, userHighId])
+  @@index([userLowId, status])
+  @@index([userHighId, status])
+}
+
+model Activity {
+  id        String       @id @default(uuid())
+  actorId   String
+  actor     User         @relation(fields: [actorId], references: [id], onDelete: Cascade)
+  entryId   String
+  entry     WatchEntry   @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  type      ActivityType
+  createdAt DateTime     @default(now())
+
+  @@index([actorId, createdAt, id])
+  @@index([entryId])
+}
+
+model RateLimit {
+  id          String @id @default(uuid())
+  key         String @unique
+  count       Int
+  lastRequest BigInt
+}
+
+model MediaCache {
+  key       String   @id
+  value     Json
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([expiresAt])
+}

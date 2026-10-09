@@ -8,25 +8,32 @@
     "dev:compile": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
     "dev:serve": "node --env-file-if-exists=../../.env --watch dist/main.js",
     "start": "node --env-file-if-exists=../../.env dist/main.js",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "pnpm generate && tsc -p tsconfig.build.json",
     "typecheck": "pnpm build && tsc -p tsconfig.json --noEmit",
     "lint": "eslint src test",
-    "test": "pnpm build && vitest run"
+    "test": "pnpm build && vitest run",
+    "generate": "prisma generate"
   },
   "dependencies": {
     "@nestjs/common": "12.1.2",
     "@nestjs/core": "12.1.2",
     "@nestjs/platform-express": "12.1.2",
+    "@prisma/adapter-pg": "7.10.0",
+    "@prisma/client": "7.10.0",
     "@tracker/contracts": "workspace:*",
+    "better-auth": "1.7.7",
     "class-transformer": "0.5.1",
     "class-validator": "0.15.1",
+    "pg": "8.16.3",
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.2"
   },
   "devDependencies": {
     "@nestjs/testing": "12.1.2",
     "@types/express": "5.0.6",
+    "@types/pg": "8.15.6",
     "@types/supertest": "7.2.1",
+    "prisma": "7.10.0",
     "supertest": "7.3.1",
     "vitest": "5.0.3"
   }
