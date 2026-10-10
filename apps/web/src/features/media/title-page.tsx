@@ -110,13 +110,23 @@ function Seasons({ media }: { media: MediaDetail }) {
       </p>
       {query.isPending ? (
         <p role="status">Loading seasons…</p>
-      ) : query.error ? (
+      ) : !query.data ? (
         <>
           <p role="alert">Season metadata is unavailable.</p>
           <Button onClick={() => void query.refetch()}>Retry seasons</Button>
         </>
       ) : (
         <>
+          {query.error && (
+            <div className="entry-refresh-error">
+              <p role="alert">
+                We couldn’t refresh the seasons. Your entries are still here.
+              </p>
+              <Button variant="outline" onClick={() => void query.refetch()}>
+                Retry seasons
+              </Button>
+            </div>
+          )}
           {!query.data.items.length && <p>Season metadata is unavailable.</p>}
           <div className="season-buttons">
             {query.data.items.map((season) => (
@@ -171,15 +181,27 @@ export function TitlePage({ imdbId }: { imdbId: string }) {
         <p className="result-message" role="status">
           Opening this story…
         </p>
-      ) : query.error ? (
+      ) : !query.data ? (
         <div className="discovery-empty">
           <h1>Metadata unavailable</h1>
-          <p role="alert">{query.error.message}</p>
+          <p role="alert">
+            {query.error?.message ?? "Metadata is unavailable."}
+          </p>
           <Button onClick={() => void query.refetch()}>Retry</Button>
           <Link href="/my-list">Your saved list is still here</Link>
         </div>
       ) : (
         <>
+          {query.error && (
+            <div className="entry-refresh-error">
+              <p role="alert">
+                We couldn’t refresh title metadata. Your entries are still here.
+              </p>
+              <Button variant="outline" onClick={() => void query.refetch()}>
+                Retry title metadata
+              </Button>
+            </div>
+          )}
           <div className="title-hero">
             <Poster url={query.data.posterUrl} title={query.data.title} />
             <div className="title-copy">

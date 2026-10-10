@@ -42,8 +42,7 @@ test("movie discovery, logging, confirmation, edit/delete, filters and responsiv
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   page.on("console", (m) => {
-    if (m.type() === "error")
-      errors.push(m.text());
+    if (m.type() === "error") errors.push(m.text());
   });
   await page.route("https://posters.example.test/**", (route) =>
     route.fulfill({
@@ -579,3 +578,84 @@ test("failed background entry refresh preserves a mounted unsaved draft", async 
   );
   await page.unroute("**/api/users/*/entries?*");
 });
+
+for (const parentQuery of ["title metadata", "season list"] as const) {
+  test(`failed background ${parentQuery} refresh preserves title and season drafts`, async ({
+    page,
+    account,
+    mailLink,
+  }) => {
+    await login(page, account, mailLink);
+    await page.goto("/titles/tt9000002");
+    await form(page)
+      .getByLabel("Status", { exact: true })
+      .selectOption("WATCHED");
+    await form(page).getByLabel("Your rating").fill("7");
+    await form(page).getByLabel("Completion date").fill("2024-02-29");
+    await form(page).getByLabel("Review").fill("Unsaved whole-series review");
+    await page.getByRole("button", { name: "Show seasons" }).click();
+    await page.getByRole("button", { name: "Season 1", exact: true }).click();
+    const season = page.getByRole("form", { name: "Season 1 entry" });
+    await season.getByLabel("Status", { exact: true }).selectOption("WATCHING");
+    await season.getByLabel("Your rating").fill("9");
+    await season.getByLabel("Review").fill("Unsaved season review");
+    const pattern =
+      parentQuery === "title metadata"
+        ? "**/api/media/imdb/tt9000002"
+        : "**/api/media/*/seasons";
+    const matches = (url: string) =>
+      parentQuery === "title metadata"
+        ? new URL(url).pathname === "/api/media/imdb/tt9000002"
+        : /\/api\/media\/[^/]+\/seasons$/.test(new URL(url).pathname);
+    await page.route(pattern, async (route) => {
+      // The product endpoint and real database are still exercised. Discard its
+      // successful response to simulate a failed metadata transport refresh.
+      const response = await route.fetch();
+      expect(response.status()).toBe(200);
+      await route.abort("failed");
+    });
+    const failed = page.waitForEvent("requestfailed", {
+      predicate: (request) => matches(request.url()),
+    });
+    await page.evaluate(() =>
+      window.dispatchEvent(new Event("visibilitychange")),
+    );
+    await failed;
+    await expect(page.locator(".page-content p[role=alert]")).toBeVisible();
+    await expect(form(page).getByLabel("Review")).toHaveValue(
+      "Unsaved whole-series review",
+    );
+    await expect(form(page).getByLabel("Your rating")).toHaveValue("7");
+    await expect(form(page).getByLabel("Completion date")).toHaveValue(
+      "2024-02-29",
+    );
+    await expect(season.getByLabel("Review")).toHaveValue(
+      "Unsaved season review",
+    );
+    await expect(season.getByLabel("Your rating")).toHaveValue("9");
+    await expect(season.getByLabel("Status", { exact: true })).toHaveValue(
+      "WATCHING",
+    );
+    await page.unroute(pattern);
+    await page
+      .getByRole("button", {
+        name:
+          parentQuery === "title metadata"
+            ? "Retry title metadata"
+            : "Retry seasons",
+        exact: true,
+      })
+      .click();
+    await expect(page.locator(".page-content p[role=alert]")).toHaveCount(0);
+    await expect(form(page).getByLabel("Review")).toHaveValue(
+      "Unsaved whole-series review",
+    );
+    await expect(form(page).getByLabel("Completion date")).toHaveValue(
+      "2024-02-29",
+    );
+    await expect(season.getByLabel("Review")).toHaveValue(
+      "Unsaved season review",
+    );
+    await expect(season.getByLabel("Your rating")).toHaveValue("9");
+  });
+}
