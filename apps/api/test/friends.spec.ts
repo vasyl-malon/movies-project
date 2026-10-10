@@ -1,0 +1,61 @@
+import 'reflect-metadata';
+import { beforeAll, beforeEach, afterAll, describe, it, expect } from 'vitest';
+import request from 'supertest';
+import type { INestApplication } from '@nestjs/common';
+import { createApplication } from '../dist/bootstrap.js';
+import { createTestDatabase, resetDatabase, createVerifiedUserClient, testConfig } from './fixtures.js';
+const enabled=Boolean(process.env.TEST_DATABASE_URL&&process.env.TEST_MAILPIT_URL&&process.env.TEST_SMTP_PORT);
+describe.skipIf(!enabled)('friendship HTTP and private access',()=>{
+ const db=enabled?createTestDatabase():undefined!; let app:INestApplication;
+ beforeAll(async()=>{app=await createApplication({...testConfig,databaseUrl:process.env.TEST_DATABASE_URL!,smtpPort:Number(process.env.TEST_SMTP_PORT)});await app.init();});
+ beforeEach(async()=>{await resetDatabase(db);}); afterAll(async()=>{await app?.close();await db.$disconnect();});
+ async function actor(){const {client,email}=await createVerifiedUserClient(app,undefined,process.env.TEST_MAILPIT_URL);return {client,user:await db.user.findUniqueOrThrow({where:{email}})};}
+ it('requires sessions on every friendship route',async()=>{const server=request(app.getHttpServer());await server.get('/api/friends').expect(401);await server.get('/api/friend-requests').expect(401);await server.post('/api/friend-requests').set('Origin',testConfig.frontendOrigin).send({recipientId:crypto.randomUUID()}).expect(401);});
+ it('rejects self requests, outsider actions, requester acceptance, pending access; acceptance and removal change fresh mutual access',async()=>{
+  const a=await actor(),b=await actor(),c=await actor();
+  const {PrivateAccessService}=await import('../dist/modules/friends/private-access.service.js'); const access=app.get(PrivateAccessService);
+  await expect(access.assertCanRead(a.user.id,a.user.id)).resolves.toBeUndefined();
+  await expect(access.assertCanRead(a.user.id,b.user.id)).rejects.toThrow();
+  const send=(id:string)=>a.client.post('/api/friend-requests').set('Origin',testConfig.frontendOrigin).send({recipientId:id});
+  await send(a.user.id).expect(400); await a.client.post('/api/friend-requests').send({recipientId:b.user.id}).expect(403);
+  const pending=await send(b.user.id).expect(201);const id=pending.body.id;
+  await expect(access.assertCanRead(a.user.id,b.user.id)).rejects.toThrow();
+  await a.client.post(`/api/friend-requests/${id}/accept`).set('Origin',testConfig.frontendOrigin).send({}).expect(404);
+  const outsider=await c.client.delete(`/api/friend-requests/${id}`).set('Origin',testConfig.frontendOrigin).expect(404);
+  const missing=await c.client.delete(`/api/friend-requests/${crypto.randomUUID()}`).set('Origin',testConfig.frontendOrigin).expect(404);
+  expect(outsider.body).toEqual(missing.body);
+  await c.client.post(`/api/friend-requests/${id}/accept`).set('Origin',testConfig.frontendOrigin).send({}).expect(404);
+  const requests=await b.client.get('/api/friend-requests').expect(200);
+  expect(requests.body.items).toEqual([{id,requester:{id:a.user.id,username:a.user.username,displayName:a.user.name,avatar:'default'},recipient:{id:b.user.id,username:b.user.username,displayName:b.user.name,avatar:'default'}}]);
+  await a.client.delete(`/api/friends/${b.user.id}`).set('Origin',testConfig.frontendOrigin).expect(404);
+  expect((await c.client.get('/api/friend-requests').expect(200)).body.items).toEqual([]);
+  await b.client.post(`/api/friend-requests/${id}/accept`).set('Origin',testConfig.frontendOrigin).send({}).expect(201);
+  await a.client.delete(`/api/friend-requests/${id}`).set('Origin',testConfig.frontendOrigin).expect(404);
+  await c.client.delete(`/api/friends/${b.user.id}`).set('Origin',testConfig.frontendOrigin).expect(404);
+  expect((await a.client.get('/api/friend-requests').expect(200)).body.items).toEqual([]);
+  await expect(access.assertCanRead(a.user.id,b.user.id)).resolves.toBeUndefined();await expect(access.assertCanRead(b.user.id,a.user.id)).resolves.toBeUndefined();
+  const friends=await a.client.get('/api/friends').expect(200);expect(friends.body.items).toEqual([{id:b.user.id,username:b.user.username,displayName:b.user.name,avatar:'default'}]);expect(friends.body.nextCursor).toBeNull();
+  await a.client.delete(`/api/friends/${b.user.id}`).set('Origin',testConfig.frontendOrigin).expect(200);
+  await expect(access.assertCanRead(a.user.id,b.user.id)).rejects.toThrow();await expect(access.assertCanRead(b.user.id,a.user.id)).rejects.toThrow();
+ });
+ it('handles duplicate and opposite direction races atomically and permits both dismissal sides',async()=>{
+  const a=await actor(),b=await actor();
+  const send=(from:typeof a,to:typeof a)=>from.client.post('/api/friend-requests').set('Origin',testConfig.frontendOrigin).send({recipientId:to.user.id});
+  const responses=await Promise.all([send(a,b),send(b,a),send(a,b)]);expect(responses.map(r=>r.status).sort()).toEqual([201,409,409]);expect(await db.friendship.count()).toBe(1);
+  const row=await db.friendship.findFirstOrThrow();
+  const recipient=row.requesterId===a.user.id?b:a;
+  await recipient.client.delete(`/api/friend-requests/${row.id}`).set('Origin',testConfig.frontendOrigin).expect(200);
+  const next=await send(a,b).expect(201);await a.client.delete(`/api/friend-requests/${next.body.id}`).set('Origin',testConfig.frontendOrigin).expect(200);
+ });
+ it('bounds participant pages, rejects malformed queries and applies expiring persistent send limits',async()=>{
+  const a=await actor();
+  for(const query of ['limit=0','limit=51','limit=2.5','cursor=bad','unknown=1'])await a.client.get(`/api/friends?${query}`).expect(400);
+  const users=await Promise.all(Array.from({length:22},(_,i)=>db.user.create({data:{id:crypto.randomUUID(),email:`page${i}@example.test`,name:'Public',username:`page_${i}`}})));
+  for(const u of users)await db.friendship.create({data:{userLowId:[a.user.id,u.id].sort()[0]!,userHighId:[a.user.id,u.id].sort()[1]!,requesterId:a.user.id,status:'ACCEPTED'}});
+  const first=await a.client.get('/api/friends').expect(200);expect(first.body.items).toHaveLength(20);expect(first.body.nextCursor).toBeTruthy();const second=await a.client.get(`/api/friends?cursor=${first.body.nextCursor}`).expect(200);expect(second.body.items).toHaveLength(2);expect(new Set([...first.body.items,...second.body.items].map((u:{id:string})=>u.id)).size).toBe(22);
+  for(let i=0;i<10;i++)await a.client.post('/api/friend-requests').set('Origin',testConfig.frontendOrigin).send({recipientId:crypto.randomUUID()}).expect(404);
+  await a.client.post('/api/friend-requests').set('Origin',testConfig.frontendOrigin).send({recipientId:crypto.randomUUID()}).expect(429);
+  await db.rateLimit.update({where:{key:`friend-send:${a.user.id}`},data:{lastRequest:0n}});
+  await a.client.post('/api/friend-requests').set('Origin',testConfig.frontendOrigin).send({recipientId:crypto.randomUUID()}).expect(404);
+ });
+});

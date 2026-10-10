@@ -76,3 +76,11 @@ export interface ApiError {
   code: string;
   message: string;
 }
+
+export const PRESET_AVATARS = ['default', 'popcorn', 'film', 'ticket'] as const;
+export type PresetAvatar = (typeof PRESET_AVATARS)[number];
+export interface FriendRequestView {
+  id: string;
+  requester: ProfileView;
+  recipient: ProfileView;
+}

@@ -109,11 +109,11 @@ Use UUID application IDs, case-normalized usernames, ISO timestamps, and bounded
 
 **Interfaces:** `PrivateAccessService.assertCanRead(viewerId, ownerId): Promise<void>`. Routes: `GET/PATCH /api/me`, `GET /api/profiles/:username`, `GET /api/friends`, `GET /api/friend-requests`, `POST /api/friend-requests { recipientId }`, `POST /api/friend-requests/:id/accept`, `DELETE /api/friend-requests/:id`, `DELETE /api/friends/:userId`. All require sessions; only the recipient accepts, while either pending participant can dismiss their permitted side.
 
-- [ ] Add tests for anonymous profile access denied, normalized exact lookup, no email/private counts in responses, self-request rejection, requester acceptance denied, duplicate/opposite-direction races, acceptance creating mutual access, and removal revoking access. Confirm failures.
-- [ ] Implement profile editing with unique lowercase usernames matching `[a-z0-9_]{3,30}`, display names from 1 to 80 characters, and an allowlisted preset avatar. Reject unsupported profile fields.
-- [ ] Implement friendship operations using the canonical unordered user pair with transactional acceptance and database uniqueness. Rate-limit discovery to 30/minute and friend sends to 10/hour per user. Return only relevant relationships to each participant.
-- [ ] Run `pnpm --filter @tracker/api test -- profiles.spec.ts friends.spec.ts`; expect all authorization and concurrent request cases to pass.
-- [ ] Commit as `feat: add mutual friendships and private access policy`.
+- [x] Add tests for anonymous profile access denied, normalized exact lookup, no email/private counts in responses, self-request rejection, requester acceptance denied, duplicate/opposite-direction races, acceptance creating mutual access, and removal revoking access. Confirm failures.
+- [x] Implement profile editing with unique lowercase usernames matching `[a-z0-9_]{3,30}`, display names from 1 to 80 characters, and an allowlisted preset avatar. Reject unsupported profile fields.
+- [x] Implement friendship operations using the canonical unordered user pair with transactional acceptance and database uniqueness. Rate-limit discovery to 30/minute and friend sends to 10/hour per user. Return only relevant relationships to each participant.
+- [x] Run `pnpm --filter @tracker/api test -- profiles.spec.ts friends.spec.ts`; expect all authorization and concurrent request cases to pass.
+- [x] Commit as `feat: add mutual friendships and private access policy`.
 
 ## Task 6: OMDb discovery and saved metadata
 
@@ -231,3 +231,9 @@ Branch `feat/task-3-authentication` starts at merged develop `e4fcf17`. Commits 
 Branch `feat/task-4-api-transport` starts at merged develop `9c58838`. Commits `6df2d60` and `908296d` add the fixed-origin forwarding route, typed API client, session-aware query provider and signed client-IP contract. Final verification passed 114 tests (42 web, 72 API), typecheck, lint, builds, and real Next session/header smokes. Eight additional cleanup tests and scoped lint passed; independent implementation and tooling re-reviews approved. Temporary services stopped with verified process identities; user Next server, Neon and existing environment files unchanged. Setup requires matching server-only `PROXY_SHARED_SECRET` in backend and frontend, frontend `API_BASE_URL`, and frontend browser origin configuration; see README.
 
 One earlier unchanged schema setup hook timed out and later full verification passed; its cause is unknown, so capture live database waits if it recurs. Before Task 5, reconcile current auth-valid dotted usernames with the planned profile format. During deployment, verify actual Vercel client-IP headers; production delivery remains a separate launch dependency.
+
+### Task 5 completion — 2026-10-09
+
+Branch `feat/task-5-friendships` starts at merged develop `ca5a396`. Commit `ea264ff` adds protected profiles, preset avatars, mutual friendship lifecycle, bounded participant-only lists, persistent discovery/send limits, and fresh private-access authorization. New registration/profile usernames use the approved lowercase letter/digit/underscore format; historical dotted usernames remain discoverable by exact signed-in lookup and editable without a forced rename. Native auth profile editing is disabled to prevent bypassing application validation. Exact discovery uses parameterized lowercase SQL equality, avoiding wildcard interpretation of underscores.
+
+Verification: focused 10/10 real HTTP/database tests and full 124/124 tests, typecheck, lint, and builds passed. Independent review approved with no Critical/Important findings. Optional follow-ups: improve test formatting and add accept-versus-dismiss concurrency coverage; transition predicates were reviewed as sound. The historical schema setup timeout did not recur. Temporary services stopped with verified process identities; user Next server, root environment and Neon unchanged. Future private-content routes must call PrivateAccessService.

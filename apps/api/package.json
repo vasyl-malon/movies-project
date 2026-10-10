@@ -8,7 +8,7 @@
     "dev:compile": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
     "dev:serve": "node --env-file-if-exists=../../.env --watch dist/main.js",
     "start": "node --env-file-if-exists=../../.env dist/main.js",
-    "build": "pnpm generate && tsc -p tsconfig.build.json",
+    "build": "pnpm --filter @tracker/contracts build && pnpm generate && tsc -p tsconfig.build.json",
     "typecheck": "pnpm build && tsc -p tsconfig.json --noEmit",
     "lint": "eslint src test",
     "test": "pnpm build && vitest run",
