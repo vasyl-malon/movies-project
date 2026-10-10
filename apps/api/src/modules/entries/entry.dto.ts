@@ -31,6 +31,8 @@ export class EntryUpdateInput extends EntryFields {
   @ValidateIf(optional) @IsIn(ENTRY_STATUSES) status?: EntryStatus;
 }
 export class EntryListQuery {
+  @ValidateIf(optional) @IsUUID() mediaId?: string;
+  @ValidateIf(optional) @IsUUID() seasonId?: string;
   @ValidateIf(optional) @Transform(integer) @IsInt() @Min(1) @Max(MAX_PAGE_SIZE) limit: number = DEFAULT_PAGE_SIZE;
   @ValidateIf(optional) @IsUUID() cursor?: string;
   @ValidateIf(optional) @IsIn(ENTRY_STATUSES) status?: EntryStatus;

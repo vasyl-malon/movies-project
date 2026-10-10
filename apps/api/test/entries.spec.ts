@@ -222,6 +222,18 @@ describe.skipIf(!enabled)('private watch entries HTTP / PostgreSQL', () => {
     expect(second.items.every((e: { id: string }) => e.id > first.nextCursor)).toBe(true);
     expect((await list('?limit=50').expect(200)).body.items).toHaveLength(50);
   });
+  it('finds only an exact media or season target while retaining privacy and strict query validation', async () => {
+    const whole = await create({ rating: 8 });
+    const season = (await post({ target: { seasonId }, status: 'WATCHING' }).expect(201)).body;
+    expect((await list(`?mediaId=${mediaId}&limit=1`).expect(200)).body.items.map((e: { id: string }) => e.id)).toEqual([whole.id]);
+    expect((await list(`?seasonId=${seasonId}`).expect(200)).body.items.map((e: { id: string }) => e.id)).toEqual([season.id]);
+    expect((await list(`?mediaId=${randomUUID()}`).expect(200)).body.items).toEqual([]);
+    await list(`?mediaId=${mediaId}&seasonId=${seasonId}`).expect(400);
+    await list('?mediaId=bad').expect(400);
+    await list('?seasonId=bad').expect(400);
+    const denied = await friend.get(`/api/users/${ownerId}/entries?mediaId=${mediaId}`).expect(403);
+    expect(denied.headers['cache-control']).toContain('no-store');
+  });
   it('never invokes OMDb to resolve an existing entry target', async () => {
     const spy = vi.spyOn(globalThis, 'fetch');
     try { await create(); expect(spy).not.toHaveBeenCalled(); } finally { spy.mockRestore(); }

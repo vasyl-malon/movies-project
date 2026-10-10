@@ -168,11 +168,11 @@ Use UUID application IDs, case-normalized usernames, ISO timestamps, and bounded
 
 **Interfaces:** Query keys consistently namespace current-user entries, owner lists, media, seasons, feed, and community targets. Produces movie/series title pages, optional season panels, entry forms, and personal watched-list filters.
 
-- [ ] Add browser assertions for movie selection/logging, whole-series rating with optional independent season entry, edit/delete, rating-removal confirmation before Plan to Watch, completion-date defaults, and genre/rating/date filtering. Test stale search response suppression, missing poster fallback, quota failure, and selected dates unchanged across timezone contexts. Confirm failure.
-- [ ] Implement a 300-ms search delay, cancellation, pagination, accessible poster cards, title metadata, clearly distinct personal/IMDb/community ratings, and expandable seasons. Provide explicit insufficient-community-ratings and unavailable-metadata states.
-- [ ] Implement entry controls with confirmation when a status change clears a rating/date. Preserve unsaved input on API errors. Refresh affected queries after success; recover duplicate-create conflicts by fetching the current entry instead of silently overwriting it.
-- [ ] Run `pnpm --filter @tracker/web exec playwright test e2e/tracking.spec.ts`; expect all flows passing with mocked OMDb through the test API.
-- [ ] Commit as `feat: add title discovery and personal tracking interface`.
+- [x] Add browser assertions for movie selection/logging, whole-series rating with optional independent season entry, edit/delete, rating-removal confirmation before Plan to Watch, completion-date defaults, and genre/rating/date filtering. Test stale search response suppression, missing poster fallback, quota failure, and selected dates unchanged across timezone contexts. Confirm failure.
+- [x] Implement a 300-ms search delay, cancellation, pagination, accessible poster cards, title metadata, clearly distinct personal/IMDb/community ratings, and expandable seasons. Provide explicit insufficient-community-ratings and unavailable-metadata states.
+- [x] Implement entry controls with confirmation when a status change clears a rating/date. Preserve unsaved input on API errors. Refresh affected queries after success; recover duplicate-create conflicts by fetching the current entry instead of silently overwriting it.
+- [x] Run `pnpm --filter @tracker/web exec playwright test e2e/tracking.spec.ts`; expect all flows passing with mocked OMDb through the test API.
+- [x] Commit as `feat: add title discovery and personal tracking interface`.
 
 ## Task 11: Friends, profiles, and feed interface
 
@@ -277,3 +277,14 @@ Settings uses the validated `/me` endpoint, canonical new usernames and unchange
 Verification: the isolated suite passed 239/239 tests (194 API, 45 web), with no skips. Six original Chromium account scenarios passed; four final shell regressions and two review-fix browser checks cover amended behavior, totaling eight distinct browser scenarios. Fresh lint, typecheck and production builds passed after the final correction. Desktop/mobile/dark/light screenshots and browser console checks were reviewed. Independent review found a pending-profile-save race; its real delayed-response RED/GREEN regression and scoped re-review confirmed the fix. Optional follow-up: format dense JSX/CSS into multiline blocks.
 
 Tests used temporary local PostgreSQL, API, Next and Mailpit; no user Neon, live OMDb or real email access. Identity-verified temporary services were stopped, preserving existing user servers, environment files and untracked tool configuration. Actual production email delivery remains a launch dependency. Tasks 10–12 remain pending.
+
+
+### Task 10 completion — 2026-10-10
+
+Branch `feat/task-10-tracking-ui` starts at merged develop `1b6beef`. Commits `3bed9ed` and `15364ed` add protected search, title pages and My List. Search debounces every input change by 300 ms, cancels obsolete requests, paginates and handles missing posters and provider failures. Title pages distinguish personal, IMDb and anonymous community ratings; whole-series and optional season entries remain independent, including season community thresholds. Entry forms support status, optional ratings, plain-text reviews and literal local calendar dates, with confirmation before clearing ratings or dates. Pending writes lock controls; errors preserve drafts; duplicate-create conflicts fetch the existing entry and require an explicit choice before overwrite.
+
+My List filters by status, genre, personal rating and completion dates with server pagination. Viewer-scoped private queries and guarded TanStack mutations preserve the session boundary and prevent late saves from restoring private content after logout. The narrow existing owner-list extension accepts at most one exact media or season UUID filter, providing bounded entry/conflict lookup without a new route or migration. Test-only OMDb fixtures run inside guarded local API services; production bootstrap is unchanged.
+
+Verification: the isolated suite passed 240/240 tests (195 API, 45 web), with no skips, and the full browser run passed 19/19 scenarios (11 tracking, 8 authentication). Final mutation/season amendments passed six covering browser scenarios; final visual checks passed with zero console errors. Independent review identified draft loss after background parent metadata errors. Both title and season-list failures were reproduced before the fix, then six covering browser checks passed after preserving cached editor subtrees. Scoped re-review approved the correction with no new findings. Fresh lint, typecheck and production builds passed after the final code change. Desktop/mobile and dark/light screenshots were reviewed.
+
+Tests used isolated PostgreSQL, API, Next and Mailpit with controlled OMDb responses. Temporary services were stopped with verified process identities, preserving existing user servers and configuration. One early generation-only build may have loaded the root environment; it made no database/provider connection or secret output, and all final checks explicitly used isolated configuration. Tasks 11–12 remain pending; no push, merge request or deployment was performed.
