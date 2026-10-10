@@ -6,21 +6,9 @@ import { PrivateAccessService } from '../friends/private-access.service.js';
 import { MediaService } from '../media/media.service.js';
 import { ActivityWriter } from '../activity/activity-writer.service.js';
 import { isUniqueConflict } from '../profiles/profiles.service.js';
+import { entrySelect, entryView } from './entry.view.js';
 import { calendarDate, type EntryCreateInput, type EntryUpdateInput, type EntryListQuery } from './entry.dto.js';
 
-const context = { media: true, season: { include: { media: true } } } as const;
-type EntryRow = Prisma.WatchEntryGetPayload<{ include: typeof context }>;
-function view(row: EntryRow): EntryView {
-  const media = row.media ?? row.season!.media;
-  return {
-    id: row.id, ownerId: row.userId, target: row.mediaId ? { mediaId: row.mediaId } : { seasonId: row.seasonId! },
-    status: row.status, rating: row.rating === null ? null : Number(row.rating), review: row.review,
-    completedOn: row.completedAt?.toISOString().slice(0, 10) ?? null,
-    createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString(),
-    media: { id: media.id, imdbId: media.imdbId, type: media.type, title: media.title, releaseYear: media.releaseYear, posterUrl: media.posterUrl, genres: media.genres },
-    season: row.season ? { id: row.season.id, seasonNumber: row.season.seasonNumber } : null,
-  };
-}
 function changes(input: EntryCreateInput | EntryUpdateInput, before: WatchEntry | null) {
   const status = input.status ?? before!.status;
   if (status === 'PLAN_TO_WATCH' && input.rating !== undefined && input.rating !== null) throw new BadRequestException();
@@ -56,9 +44,9 @@ export class EntriesService {
     const data = changes(input, null);
     try {
       return await this.db.$transaction(async tx => {
-        const row = await tx.watchEntry.create({ data: { userId, ...target, ...data }, include: context });
+        const row = await tx.watchEntry.create({ data: { userId, ...target, ...data }, select: entrySelect });
         await this.activity.recordChanges(tx, null, row);
-        return view(row);
+        return entryView(row);
       });
     } catch (error) { if (isUniqueConflict(error)) throw new ConflictException(); throw error; }
   }
@@ -67,9 +55,9 @@ export class EntriesService {
     const owner = await this.db.watchEntry.findUnique({ where: { id }, select: { userId: true } });
     if (!owner) throw new NotFoundException();
     await this.access.assertCanRead(viewerId, owner.userId);
-    const row = await this.db.watchEntry.findUnique({ where: { id }, include: context });
+    const row = await this.db.watchEntry.findUnique({ where: { id }, select: entrySelect });
     if (!row) throw new NotFoundException();
-    return view(row);
+    return entryView(row);
   }
   async update(userId: string, id: string, input: EntryUpdateInput): Promise<EntryView> {
     return this.db.$transaction(async tx => {
@@ -77,12 +65,12 @@ export class EntriesService {
       // predecessor and cannot duplicate events or overwrite unrelated edits.
       const owned = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "WatchEntry" WHERE id = ${id} AND "userId" = ${userId} FOR UPDATE`;
       if (!owned.length) throw new NotFoundException();
-      const before = await tx.watchEntry.findUniqueOrThrow({ where: { id }, include: context });
+      const before = await tx.watchEntry.findUniqueOrThrow({ where: { id }, select: entrySelect });
       const data = changes(input, before);
-      if (data.status === before.status && String(data.rating) === String(before.rating) && data.review === before.review && data.completedAt?.getTime() === before.completedAt?.getTime()) return view(before);
-      const after = await tx.watchEntry.update({ where: { id }, data, include: context });
+      if (data.status === before.status && String(data.rating) === String(before.rating) && data.review === before.review && data.completedAt?.getTime() === before.completedAt?.getTime()) return entryView(before);
+      const after = await tx.watchEntry.update({ where: { id }, data, select: entrySelect });
       await this.activity.recordChanges(tx, before, after);
-      return view(after);
+      return entryView(after);
     });
   }
   async delete(userId: string, id: string): Promise<void> {
@@ -100,7 +88,7 @@ export class EntriesService {
       ...(query.ratingMin !== undefined || query.ratingMax !== undefined ? { rating: { not: null, gte: query.ratingMin, lte: query.ratingMax } } : {}),
       ...(query.from || query.to ? { completedAt: { not: null, ...(query.from ? { gte: calendarDate(query.from)! } : {}), ...(query.to ? { lte: calendarDate(query.to)! } : {}) } } : {}),
     };
-    const rows = await this.db.watchEntry.findMany({ where, include: context, orderBy: { id: 'asc' }, take: query.limit + 1 });
-    return { items: rows.slice(0, query.limit).map(view), nextCursor: rows.length > query.limit ? rows[query.limit - 1]!.id : null };
+    const rows = await this.db.watchEntry.findMany({ where, select: entrySelect, orderBy: { id: 'asc' }, take: query.limit + 1 });
+    return { items: rows.slice(0, query.limit).map(entryView), nextCursor: rows.length > query.limit ? rows[query.limit - 1]!.id : null };
   }
 }

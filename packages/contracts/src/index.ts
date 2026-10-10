@@ -61,6 +61,15 @@ export interface ProfileView {
   avatar: string;
 }
 
+/** Authorized current entry content; activity never contains historical snapshots. */
+export interface ActivityView {
+  id: string;
+  actor: ProfileView;
+  entry: EntryView;
+  type: 'STATUS' | 'RATING' | 'REVIEW';
+  createdAt: string;
+}
+
 export interface Page<T> {
   items: T[];
   nextCursor: string | null;
