@@ -146,10 +146,10 @@ Use UUID application IDs, case-normalized usernames, ISO timestamps, and bounded
 
 **Interfaces:** `GET /api/feed?cursor= -> Page<ActivityView>`; `GET /api/community/media/:id` and `GET /api/community/seasons/:id -> CommunityRating`. `ActivityView` includes actor basic profile, entry reference, change type, timestamp, and authorized current content; no historical sensitive snapshots.
 
-- [ ] Test feed membership before/after acceptance/removal, stable timestamp pagination, current review text after edits, absence after deletion, and no events for no-op/profile/date-only changes. Test 2 ratings hidden, 3 eligible ratings visible, Watching/Dropped excluded, and status/edit/delete changes affecting averages. Confirm failures.
-- [ ] Implement feed queries against current friendships and current entries. Aggregate current rated Watched entries by exact media or season target; return both count and average as null below three users and no contributor information.
-- [ ] Run `pnpm --filter @tracker/api test -- activity.spec.ts community.spec.ts`; expect all privacy and aggregation cases passing, including separate series/season averages and rollback without partial events.
-- [ ] Commit as `feat: add friend feed and anonymous community ratings`.
+- [x] Test feed membership before/after acceptance/removal, stable timestamp pagination, current review text after edits, absence after deletion, and no events for no-op/profile/date-only changes. Test 2 ratings hidden, 3 eligible ratings visible, Watching/Dropped excluded, and status/edit/delete changes affecting averages. Confirm failures.
+- [x] Implement feed queries against current friendships and current entries. Aggregate current rated Watched entries by exact media or season target; return both count and average as null below three users and no contributor information.
+- [x] Run `pnpm --filter @tracker/api test -- activity.spec.ts community.spec.ts`; expect all privacy and aggregation cases passing, including separate series/season averages and rollback without partial events.
+- [x] Commit as `feat: add friend feed and anonymous community ratings`.
 
 ## Task 9: Application shell and account flows
 
@@ -257,3 +257,12 @@ The optional `localToday` input supplies the validated browser-local default whe
 Entry writes and genuine status/rating/review activity commit together. Owned-row locks serialize concurrent updates; duplicate creates return conflicts without extra events. No-op and date-only edits create no events, and deletion cascades existing entry activity.
 
 Verification: 48 focused tests and all 215 repository tests passed (173 API, 42 web), with no skipped integration suites; lint, typecheck and production builds passed. Independent review approved with no findings. Tests used isolated local PostgreSQL and Mailpit, with no user Neon or live OMDb access. Temporary services were stopped with verified process identities; user environment files, existing servers and untracked tool configuration were preserved. Tasks 8–12 remain pending.
+
+
+### Task 8 completion — 2026-10-10
+
+Branch `feat/task-8-feed-community` starts at merged develop `f22ff87`. Commit `0576246` adds the authenticated friends feed and anonymous community rating endpoints. Feed queries authorize current accepted friendships and current entry ownership before pagination, require matching activity actor/entry owner, and resolve current review/profile/entry content within one repeatable-read database snapshot. Own events are excluded. Canonical bounded timestamp/UUID cursors support newest-first ordering, ties and deleted cursor rows; pages default to 20 and cap at 50.
+
+Community aggregates use current rated Watched entries for the exact movie, whole-series or season target. Count and average are both null below three distinct eligible users; otherwise only count and the average rounded to one decimal are returned. No contributor information or series/season rollup is exposed. Both API surfaces require verified sessions and bypass shared HTTP caching. The shared entry serializer preserves Task 7 calendar dates, numeric ratings and independent targets. No migration or frontend work was needed.
+
+Verification: 21 focused HTTP/PostgreSQL tests and all 236 repository tests passed (194 API, 42 web), with no skipped suites; lint, typecheck and production builds passed. Independent review approved with no findings. Tests covered revocation/reacceptance, current content, deletion, stable pagination, activity rollback, the aggregate threshold and live eligibility changes. Tests used isolated local services with no user Neon or live OMDb access. Temporary services were stopped with verified process identities; existing user servers, environment files and untracked tool configuration were preserved. Tasks 9–12 remain pending.
