@@ -84,3 +84,40 @@ export interface FriendRequestView {
   requester: ProfileView;
   recipient: ProfileView;
 }
+
+/** Discovery pages preserve each provider type's page order; mixed pages interleave types. */
+export interface MediaSearchItem {
+  imdbId: string;
+  type: 'MOVIE' | 'SERIES';
+  title: string;
+  releaseYear: string | null;
+  posterUrl: string | null;
+}
+export interface MediaSearchPage {
+  items: MediaSearchItem[];
+  page: number;
+  nextPage: number | null;
+}
+export interface MediaDetail extends MediaDisplay {
+  synopsis: string | null;
+  imdbRating: number | null;
+  totalSeasons: number | null;
+}
+export interface SeasonEpisode {
+  imdbId: string | null;
+  title: string;
+  episodeNumber: number;
+  releasedOn: string | null;
+}
+export interface ResolvedTarget {
+  target: EntryTarget;
+  media: MediaDisplay;
+  season: SeasonDisplay | null;
+}
+export interface SeasonDetail extends ResolvedTarget {
+  episodes: SeasonEpisode[] | null;
+}
+export interface SeasonList {
+  items: SeasonDisplay[];
+  totalSeasons: number | null;
+}

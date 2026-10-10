@@ -1,6 +1,7 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException } from '@nestjs/common';
 import type { ApiError } from '@tracker/contracts';
 import type { Response } from 'express';
+import { OmdbError, OMDB_FAILURES } from '../modules/media/omdb.client.js';
 
 const errors: Record<number, ApiError> = {
   400: { code: 'BAD_REQUEST', message: 'Invalid request.' },
@@ -25,6 +26,10 @@ export class HttpErrorFilter implements ExceptionFilter {
       if (typeof body === 'object' && 'code' in body && body.code === 'VALIDATION_ERROR') {
         error = { code: 'VALIDATION_ERROR', message: 'Request validation failed.' };
       }
+    }
+
+    if (exception instanceof OmdbError) {
+      error = { code: exception.code, message: OMDB_FAILURES[exception.code].message };
     }
 
     host.switchToHttp().getResponse<Response>().status(status).json(error);

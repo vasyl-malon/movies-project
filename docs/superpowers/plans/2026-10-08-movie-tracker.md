@@ -121,11 +121,11 @@ Use UUID application IDs, case-normalized usernames, ISO timestamps, and bounded
 
 **Interfaces:** `GET /api/media/search?q=&type=&page=`, `GET /api/media/imdb/:imdbId`, `GET /api/media/:id/seasons`, `GET /api/media/:id/seasons/:number`. Return normalized movie/series data with nullable missing fields. `MediaService.resolveTarget(target): Promise<ResolvedTarget>` supplies validated target identity and inherited display data to entries.
 
-- [ ] Mock OMDb HTTP responses and test movies/series, missing fields and posters, season counts/lists, `Response: 'False'`, rate/quota failures, timeout, malformed responses, repeated queries using cache, and episode-result exclusion. Confirm failures.
-- [ ] Implement HTTPS OMDb calls with a 5-second timeout and redacted errors. Require 3 search characters; rate-limit authenticated search to 30/minute. Cache successful searches for 15 minutes and metadata for 24 hours in PostgreSQL. Limit requests atomically to 950/day UTC as a margin under the free quota.
-- [ ] Fetch details on selection, persist by unique IMDb ID, and materialize unique season records from the parent series. Search movies and series explicitly when no type is supplied. Do not expose the key, force paid poster endpoints, or infer season IMDb averages from episode scores.
-- [ ] Run `pnpm --filter @tracker/api test -- media.spec.ts`; expect deterministic cases passing without a real key. An optional manual live check uses the owner's key only after they supply it, never as a default automated dependency.
-- [ ] Commit as `feat: add cached OMDb movie and season discovery`.
+- [x] Mock OMDb HTTP responses and test movies/series, missing fields and posters, season counts/lists, `Response: 'False'`, rate/quota failures, timeout, malformed responses, repeated queries using cache, and episode-result exclusion. Confirm failures.
+- [x] Implement HTTPS OMDb calls with a 5-second timeout and redacted errors. Require 3 search characters; rate-limit authenticated search to 30/minute. Cache successful searches for 15 minutes and metadata for 24 hours in PostgreSQL. Limit requests atomically to 950/day UTC as a margin under the free quota.
+- [x] Fetch details on selection, persist by unique IMDb ID, and materialize unique season records from the parent series. Search movies and series explicitly when no type is supplied. Do not expose the key, force paid poster endpoints, or infer season IMDb averages from episode scores.
+- [x] Run `pnpm --filter @tracker/api test -- media.spec.ts`; expect deterministic cases passing without a real key. An optional manual live check uses the owner's key only after they supply it, never as a default automated dependency.
+- [x] Commit as `feat: add cached OMDb movie and season discovery`.
 
 ## Task 7: Private entries and watched-list filters
 
@@ -237,3 +237,12 @@ One earlier unchanged schema setup hook timed out and later full verification pa
 Branch `feat/task-5-friendships` starts at merged develop `ca5a396`. Commit `ea264ff` adds protected profiles, preset avatars, mutual friendship lifecycle, bounded participant-only lists, persistent discovery/send limits, and fresh private-access authorization. New registration/profile usernames use the approved lowercase letter/digit/underscore format; historical dotted usernames remain discoverable by exact signed-in lookup and editable without a forced rename. Native auth profile editing is disabled to prevent bypassing application validation. Exact discovery uses parameterized lowercase SQL equality, avoiding wildcard interpretation of underscores.
 
 Verification: focused 10/10 real HTTP/database tests and full 124/124 tests, typecheck, lint, and builds passed. Independent review approved with no Critical/Important findings. Optional follow-ups: improve test formatting and add accept-versus-dismiss concurrency coverage; transition predicates were reviewed as sound. The historical schema setup timeout did not recur. Temporary services stopped with verified process identities; user Next server, root environment and Neon unchanged. Future private-content routes must call PrivateAccessService.
+
+
+### Task 6 completion — 2026-10-10
+
+Branch `feat/task-6-omdb-discovery` starts at merged develop `dd545b9`. Commit `4cc6430` adds authenticated OMDb movie/series search, saved details, season identities and selected-season metadata, plus DB-only target resolution for Task 7. Successful searches cache for 15 minutes and metadata for 24 hours. Provider calls use a five-second deadline and bounded responses; the shared PostgreSQL counter atomically limits outbound attempts to 950 per UTC day. Cache hits spend no provider quota, and saved targets remain usable during provider outages.
+
+Search returns `items`, `page`, and `nextPage`; untyped searches interleave the corresponding movie and series provider pages rather than claiming a combined total. Seasons inherit the parent display data, and no season IMDb average is inferred from episode ratings. Stale saved metadata can be returned on provider failures without extending freshness timestamps. No migration or frontend change is required for this task.
+
+Verification: 167/167 tests passed (125 API, including 42 media tests; 42 web), plus root lint, typecheck, and production builds. Independent review approved with no Critical/Important findings. Optional follow-up: format the long normalized-cache validation predicates for readability. Tests used mocked OMDb responses and isolated local PostgreSQL; no live provider check was performed. Temporary services were stopped with verified process identities; user environment files, Neon, existing servers, and untracked tool configuration were preserved. Tasks 7–12 remain pending.
