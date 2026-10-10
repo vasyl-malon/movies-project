@@ -157,10 +157,10 @@ Use UUID application IDs, case-normalized usernames, ISO timestamps, and bounded
 
 **Interfaces:** Produces authenticated navigation to Search, My List, Feed, Friends, and Settings; Better Auth client hooks using Task 4's same-origin transport; editable profile and theme controls.
 
-- [ ] Add Playwright tests covering registration, local-inbox verification, sign-in/out, expired-link recovery, password reset, invalid credentials, profile editing, and expired session redirect. Confirm failure against absent routes.
-- [ ] Implement responsive shadcn/ui forms, navigation, validation errors, verification resend, dark default/light toggle, and preset-avatar selection. Keep backend service/provider names out of user flows. Clear queries on logout and prevent private content flashes while the session is unresolved.
-- [ ] Run `pnpm --filter @tracker/web exec playwright test e2e/auth.spec.ts`; expect the complete browser account flow passing against the isolated API/database/inbox.
-- [ ] Commit as `feat: add account flows and responsive application shell`.
+- [x] Add Playwright tests covering registration, local-inbox verification, sign-in/out, expired-link recovery, password reset, invalid credentials, profile editing, and expired session redirect. Confirm failure against absent routes.
+- [x] Implement responsive shadcn/ui forms, navigation, validation errors, verification resend, dark default/light toggle, and preset-avatar selection. Keep backend service/provider names out of user flows. Clear queries on logout and prevent private content flashes while the session is unresolved.
+- [x] Run `pnpm --filter @tracker/web exec playwright test e2e/auth.spec.ts`; expect the complete browser account flow passing against the isolated API/database/inbox.
+- [x] Commit as `feat: add account flows and responsive application shell`.
 
 ## Task 10: Search, title pages, and entry editing
 
@@ -266,3 +266,14 @@ Branch `feat/task-8-feed-community` starts at merged develop `f22ff87`. Commit `
 Community aggregates use current rated Watched entries for the exact movie, whole-series or season target. Count and average are both null below three distinct eligible users; otherwise only count and the average rounded to one decimal are returned. No contributor information or series/season rollup is exposed. Both API surfaces require verified sessions and bypass shared HTTP caching. The shared entry serializer preserves Task 7 calendar dates, numeric ratings and independent targets. No migration or frontend work was needed.
 
 Verification: 21 focused HTTP/PostgreSQL tests and all 236 repository tests passed (194 API, 42 web), with no skipped suites; lint, typecheck and production builds passed. Independent review approved with no findings. Tests covered revocation/reacceptance, current content, deletion, stable pagination, activity rollback, the aggregate threshold and live eligibility changes. Tests used isolated local services with no user Neon or live OMDb access. Temporary services were stopped with verified process identities; existing user servers, environment files and untracked tool configuration were preserved. Tasks 9–12 remain pending.
+
+
+### Task 9 completion — 2026-10-10
+
+Branch `feat/task-9-account-shell` starts at merged develop `a651450`. Commits `4dad830` and `fb58753` add responsive account forms, verified-session navigation, profile settings, preset avatars, and persisted dark/light themes using Tailwind and official shadcn components. Public flows cover registration, verification/resend, sign-in, forgot/reset password and expired-link recovery. Protected content waits for a fresh verified session and profile; logout, expiry and 401 clear private query/mutation caches, including failed logout and late responses. Background checks retain hidden, inert drafts, and session failures offer Retry.
+
+Settings uses the validated `/me` endpoint, canonical new usernames and unchanged legacy usernames. Profile controls lock during pending saves, preventing overlapping submissions or older responses overwriting newer drafts; failed saves preserve input. The narrow GET reset-token proxy route now forwards actual Better Auth reset emails, retaining the existing upstream/method/redirect restrictions. Isolated Next setup includes the required PostCSS configuration. Search, My List, Feed and Friends have navigation and honest reserved screens; feature interfaces remain Tasks 10–11.
+
+Verification: the isolated suite passed 239/239 tests (194 API, 45 web), with no skips. Six original Chromium account scenarios passed; four final shell regressions and two review-fix browser checks cover amended behavior, totaling eight distinct browser scenarios. Fresh lint, typecheck and production builds passed after the final correction. Desktop/mobile/dark/light screenshots and browser console checks were reviewed. Independent review found a pending-profile-save race; its real delayed-response RED/GREEN regression and scoped re-review confirmed the fix. Optional follow-up: format dense JSX/CSS into multiline blocks.
+
+Tests used temporary local PostgreSQL, API, Next and Mailpit; no user Neon, live OMDb or real email access. Identity-verified temporary services were stopped, preserving existing user servers, environment files and untracked tool configuration. Actual production email delivery remains a launch dependency. Tasks 10–12 remain pending.
