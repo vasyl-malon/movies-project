@@ -8,6 +8,13 @@ import { queryKeys } from "../../lib/query-keys";
 import { Button } from "../../components/ui/button";
 import { useCurrentUser } from "../auth/current-user";
 import { purgeFriendContent } from "./private-cache";
+import { useRevocation } from "./use-revocation";
+import {
+  beginRevocation,
+  capturePrivateSession,
+  endRevocation,
+  isPrivateSessionCurrent,
+} from "../../lib/private-lifecycle";
 
 type Action = "send" | "accept" | "dismiss" | "remove";
 export function RelationshipControls({
@@ -23,6 +30,7 @@ export function RelationshipControls({
 }) {
   const viewer = useCurrentUser();
   const client = useQueryClient();
+  const revocation = useRevocation(viewer, target);
   const write = useMutation({
     mutationKey: ["user", viewer, "relationship-action", target],
     mutationFn: ({ path, options }: { path: string; options: ApiOptions }) =>
@@ -31,24 +39,26 @@ export function RelationshipControls({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const lock = useRef(false);
-  const controller = useRef<AbortController | null>(null);
-  useEffect(
-    () => () => {
-      controller.current?.abort();
-    },
-    [],
-  );
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   async function act(action: Action) {
-    if (lock.current || unavailable) return;
+    if (lock.current || unavailable || revocation.pending) return;
     lock.current = true;
     setPending(true);
     onBusy?.(true);
     setError("");
-    const operation = new AbortController();
-    controller.current = operation;
+    const session = capturePrivateSession(client);
+    const operation =
+      action === "remove" ? beginRevocation(client, viewer, target) : null;
     try {
-      await purgeFriendContent(client, viewer, target);
+      await purgeFriendContent(client, viewer, target, session);
+      if (!isPrivateSessionCurrent(client, session)) return;
       const requestId = "requestId" in relation ? relation.requestId : "";
       const path =
         action === "send"
@@ -61,44 +71,52 @@ export function RelationshipControls({
         options: {
           method: action === "send" || action === "accept" ? "POST" : "DELETE",
           body: action === "send" ? { recipientId: target } : undefined,
-          signal: operation.signal,
         },
       });
     } catch {
-      if (!operation.signal.aborted) {
+      if (mounted.current && isPrivateSessionCurrent(client, session)) {
         setError(
           "We couldn’t complete that request. Check the current relationship below and try again.",
         );
       }
     } finally {
-      if (!operation.signal.aborted) {
-        // Reconcile even after a lost successful response; never restore old private data.
-        await purgeFriendContent(client, viewer, target);
-        await Promise.all([
-          client.invalidateQueries({
-            queryKey: queryKeys.relationships(viewer),
-          }),
-          client.invalidateQueries({ queryKey: queryKeys.friends(viewer) }),
-          client.invalidateQueries({ queryKey: queryKeys.requests(viewer) }),
-        ]);
-        setPending(false);
-        onBusy?.(false);
+      try {
+        // Route unmount cannot roll back a write. Reconcile until it settles,
+        // but never touch queries belonging to a later session.
+        if (isPrivateSessionCurrent(client, session)) {
+          await purgeFriendContent(client, viewer, target, session);
+          if (isPrivateSessionCurrent(client, session)) {
+            await Promise.all([
+              client.invalidateQueries({
+                queryKey: queryKeys.relationships(viewer),
+              }),
+              client.invalidateQueries({ queryKey: queryKeys.friends(viewer) }),
+              client.invalidateQueries({
+                queryKey: queryKeys.requests(viewer),
+              }),
+            ]);
+          }
+        }
+      } finally {
+        if (operation) endRevocation(client, operation);
+        if (mounted.current && isPrivateSessionCurrent(client, session)) {
+          setPending(false);
+          onBusy?.(false);
+        }
+        lock.current = false;
       }
-      lock.current = false;
     }
   }
+  const busy = pending || revocation.pending;
   return (
-    <div className="relationship-controls" aria-busy={pending}>
+    <div className="relationship-controls" aria-busy={busy}>
       {relation.status === "SELF" && (
         <Button asChild variant="outline">
           <Link href="/my-list">Open your collection</Link>
         </Button>
       )}
       {relation.status === "NONE" && (
-        <Button
-          disabled={pending || unavailable}
-          onClick={() => void act("send")}
-        >
+        <Button disabled={busy || unavailable} onClick={() => void act("send")}>
           Send friend request
         </Button>
       )}
@@ -106,7 +124,7 @@ export function RelationshipControls({
         <>
           <span className="relationship-label">Request sent</span>
           <Button
-            disabled={pending || unavailable}
+            disabled={busy || unavailable}
             variant="outline"
             onClick={() => void act("dismiss")}
           >
@@ -117,13 +135,13 @@ export function RelationshipControls({
       {relation.status === "INCOMING" && (
         <>
           <Button
-            disabled={pending || unavailable}
+            disabled={busy || unavailable}
             onClick={() => void act("accept")}
           >
             Accept request
           </Button>
           <Button
-            disabled={pending || unavailable}
+            disabled={busy || unavailable}
             variant="outline"
             onClick={() => void act("dismiss")}
           >
@@ -135,7 +153,7 @@ export function RelationshipControls({
         <>
           <span className="relationship-label">Friends</span>
           <Button
-            disabled={pending || unavailable}
+            disabled={busy || unavailable}
             variant="outline"
             onClick={() => void act("remove")}
           >
@@ -143,7 +161,7 @@ export function RelationshipControls({
           </Button>
         </>
       )}
-      {pending && <span role="status">Updating relationship…</span>}
+      {busy && <span role="status">Updating relationship…</span>}
       {error && (
         <p role="alert" className="form-error">
           {error}

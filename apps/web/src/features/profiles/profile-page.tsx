@@ -11,6 +11,7 @@ import { MyListPage } from "../entries/my-list-page";
 import { RelationshipControls } from "../friends/relationship-controls";
 import { purgeFriendContent } from "../friends/private-cache";
 import { isProfileUsername, profilePath } from "./links";
+import { useRevocation } from "../friends/use-revocation";
 
 export function ProfilePage({ username }: { username: string }) {
   const viewer = useCurrentUser();
@@ -26,6 +27,7 @@ export function ProfilePage({ username }: { username: string }) {
     refetchOnMount: "always",
   });
   const target = profile.data?.id;
+  const revocation = useRevocation(viewer, target);
   const relationship = useQuery({
     queryKey: queryKeys.relationship(viewer, target ?? ""),
     queryFn: async ({ signal }) => {
@@ -81,7 +83,8 @@ export function ProfilePage({ username }: { username: string }) {
     !profile.isFetching &&
     !relationship.isFetching &&
     !relationship.error &&
-    !busy;
+    !busy &&
+    !revocation.pending;
   return (
     <>
       <div className="profile-heading">

@@ -1,6 +1,10 @@
 "use client";
 import Link from "next/link";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import {
+  CancelledError,
+  useInfiniteQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import type { ActivityView, Page } from "@tracker/contracts";
 import { useCurrentUser } from "../auth/current-user";
 import { apiFetch } from "../../lib/api-client";
@@ -10,6 +14,13 @@ import { PresetAvatar } from "../../components/preset-avatar";
 import { Poster } from "../media/poster";
 import { statusLabel } from "../entries/client";
 import { profilePath } from "../profiles/links";
+import { useRevocation } from "../friends/use-revocation";
+import {
+  capturePrivateSession,
+  isPrivateSessionCurrent,
+  privateRevision,
+  isRevocationPending,
+} from "../../lib/private-lifecycle";
 
 const events = {
   STATUS: "updated their watch status",
@@ -18,14 +29,26 @@ const events = {
 };
 export function FeedPage() {
   const viewer = useCurrentUser();
+  const client = useQueryClient();
+  const revocation = useRevocation(viewer);
   const feed = useInfiniteQuery({
-    queryKey: queryKeys.feed(viewer),
+    queryKey: [...queryKeys.feed(viewer), revocation.revision],
     initialPageParam: null as string | null,
-    queryFn: ({ signal, pageParam }) =>
-      apiFetch<Page<ActivityView>>(
+    queryFn: async ({ signal, pageParam }) => {
+      const session = capturePrivateSession(client);
+      const result = await apiFetch<Page<ActivityView>>(
         `/feed${pageParam ? `?cursor=${encodeURIComponent(pageParam)}` : ""}`,
         { signal },
-      ),
+      );
+      if (
+        !isPrivateSessionCurrent(client, session) ||
+        privateRevision(client) !== revocation.revision ||
+        isRevocationPending(client, viewer)
+      ) {
+        throw new CancelledError({ revert: true });
+      }
+      return result;
+    },
     getNextPageParam: (page) => page.nextCursor,
     refetchOnMount: "always",
   });
@@ -40,7 +63,9 @@ export function FeedPage() {
         </h1>
         <p>What your friends are watching, and what stayed with them.</p>
       </div>
-      {feed.error ? (
+      {revocation.pending ? (
+        <p role="status">Updating friendship. Private activity is hidden…</p>
+      ) : feed.error ? (
         <div className="result-message">
           <p role="alert">
             We couldn’t load current activity. Please try again.

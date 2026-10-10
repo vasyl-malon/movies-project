@@ -410,6 +410,96 @@ test("removal cancels a held old private response, including an ambiguous succes
   await context.close();
 });
 
+test("removal reconciles after navigation and rejects a held pre-commit feed response", async ({
+  page: a,
+  browser,
+  account: accountA,
+  mailLink,
+}) => {
+  const context = await browser.newContext({ baseURL: state.frontendOrigin });
+  const b = await context.newPage();
+  const accountB = newAccount();
+  await login(a, accountA, mailLink, "Ada Frames");
+  const idB = await login(b, accountB, mailLink, "Bela Cinema");
+  await save(b, "tt9000001", "Navigation revocation secret");
+  await connect(a, b, accountA.username, accountB.username);
+  await a.goto(`/profiles/${accountB.username}`);
+  await expect(
+    a.getByText("Navigation revocation secret", { exact: true }),
+  ).toBeVisible();
+  let commit!: () => void;
+  let started!: () => void;
+  let committed!: () => void;
+  const beforeCommit = new Promise<void>((resolve) => {
+    commit = resolve;
+  });
+  const deleteStarted = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  const deleteCommitted = new Promise<void>((resolve) => {
+    committed = resolve;
+  });
+  await a.route("**/api/friends/*", async (route) => {
+    if (route.request().method() !== "DELETE") return route.continue();
+    started();
+    await beforeCommit;
+    const response = await route.fetch();
+    expect(response.status()).toBe(200);
+    committed();
+    try {
+      await route.fulfill({ response });
+    } catch {
+      /* Old implementation aborts on navigation. */
+    }
+  });
+  let release!: () => void;
+  let ready!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const feedReady = new Promise<void>((resolve) => {
+    ready = resolve;
+  });
+  let heldOnce = false;
+  await a.route("**/api/feed*", async (route) => {
+    if (heldOnce) return route.continue();
+    heldOnce = true;
+    const response = await route.fetch();
+    expect(response.status()).toBe(200);
+    expect(JSON.stringify(await response.json())).toContain(
+      "Navigation revocation secret",
+    );
+    ready();
+    await held;
+    try {
+      await route.fulfill({ response });
+    } catch {
+      /* Settlement cancels the old read. */
+    }
+  });
+  await a.getByRole("button", { name: "Remove friend" }).click();
+  await deleteStarted;
+  await a.getByRole("link", { name: "Feed", exact: true }).first().click();
+  await expect(a).toHaveURL(/\/feed$/);
+  await feedReady;
+  commit();
+  await deleteCommitted;
+  expect((await a.request.get(`/api/users/${idB}/entries`)).status()).toBe(403);
+  release();
+  await expect(
+    a.getByRole("heading", { name: "Your friends’ next chapter starts here." }),
+  ).toBeVisible();
+  await expect(
+    a.getByText("Navigation revocation secret", { exact: true }),
+  ).toHaveCount(0);
+  await a.getByRole("link", { name: "Friends", exact: true }).first().click();
+  await a.getByRole("link", { name: "Feed", exact: true }).first().click();
+  await expect(
+    a.getByText("Navigation revocation secret", { exact: true }),
+  ).toHaveCount(0);
+  await context.close();
+});
+
 test("signed-out shared profiles retain only the strict safe destination", async ({
   page,
   account,
