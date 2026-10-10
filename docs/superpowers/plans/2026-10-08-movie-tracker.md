@@ -133,12 +133,12 @@ Use UUID application IDs, case-normalized usernames, ISO timestamps, and bounded
 
 **Interfaces:** `POST /api/entries`, `PATCH/DELETE /api/entries/:id`, `GET /api/entries/:id`, `GET /api/users/:ownerId/entries?status=&genre=&ratingMin=&ratingMax=&from=&to=&cursor=`. `ActivityWriter.recordChanges(tx, before, after): Promise<void>` receives the same Prisma transaction as the entry write.
 
-- [ ] Test owner/friend/stranger and pending-friend reads, foreign mutations denied, duplicate creates under concurrency, one-target validation, rating eligibility, nullable fields, immutable ownership/target, and series independence. Test date preservation near UTC boundaries, moving away from Watched clearing its date, and filters excluding null dates/ratings. Confirm failures.
-- [ ] Implement strict entry validation and resolution through Task 6. Reject ratings on Plan to Watch; clear previous ratings when moving there and clear completion dates when leaving Watched. Default completion date via a validated browser-supplied local date. Bound reviews to 10,000 characters and render them as plain text.
-- [ ] Apply Task 5's access policy to every read. Create/update entries and record genuine changes in one transaction; no-op requests create no events. A duplicate POST returns a conflict without an extra event, making a subsequent retry observable and recoverable.
-- [ ] Implement bounded, stable pagination and genre/rating/date filters using the owner's entries. Serialize calendar dates as `YYYY-MM-DD` without timezone shifts. Delete entry activity in the same operation.
-- [ ] Run `pnpm --filter @tracker/api test -- entries.spec.ts`; expect privacy, transition, concurrency, filter, and transaction cases passing.
-- [ ] Commit as `feat: add private movie and season watch entries`.
+- [x] Test owner/friend/stranger and pending-friend reads, foreign mutations denied, duplicate creates under concurrency, one-target validation, rating eligibility, nullable fields, immutable ownership/target, and series independence. Test date preservation near UTC boundaries, moving away from Watched clearing its date, and filters excluding null dates/ratings. Confirm failures.
+- [x] Implement strict entry validation and resolution through Task 6. Reject ratings on Plan to Watch; clear previous ratings when moving there and clear completion dates when leaving Watched. Default completion date via a validated browser-supplied local date. Bound reviews to 10,000 characters and render them as plain text.
+- [x] Apply Task 5's access policy to every read. Create/update entries and record genuine changes in one transaction; no-op requests create no events. A duplicate POST returns a conflict without an extra event, making a subsequent retry observable and recoverable.
+- [x] Implement bounded, stable pagination and genre/rating/date filters using the owner's entries. Serialize calendar dates as `YYYY-MM-DD` without timezone shifts. Delete entry activity in the same operation.
+- [x] Run `pnpm --filter @tracker/api test -- entries.spec.ts`; expect privacy, transition, concurrency, filter, and transaction cases passing.
+- [x] Commit as `feat: add private movie and season watch entries`.
 
 ## Task 8: Friend activity and anonymous averages
 
@@ -246,3 +246,14 @@ Branch `feat/task-6-omdb-discovery` starts at merged develop `dd545b9`. Commit `
 Search returns `items`, `page`, and `nextPage`; untyped searches interleave the corresponding movie and series provider pages rather than claiming a combined total. Seasons inherit the parent display data, and no season IMDb average is inferred from episode ratings. Stale saved metadata can be returned on provider failures without extending freshness timestamps. No migration or frontend change is required for this task.
 
 Verification: 167/167 tests passed (125 API, including 42 media tests; 42 web), plus root lint, typecheck, and production builds. Independent review approved with no Critical/Important findings. Optional follow-up: format the long normalized-cache validation predicates for readability. Tests used mocked OMDb responses and isolated local PostgreSQL; no live provider check was performed. Temporary services were stopped with verified process identities; user environment files, Neon, existing servers, and untracked tool configuration were preserved. Tasks 7–12 remain pending.
+
+
+### Task 7 completion — 2026-10-10
+
+Branch `feat/task-7-private-entries` starts at merged develop `06066ac`. Commit `12a0c70` adds private entry creation, retrieval, editing and deletion; owner-specific genre, rating, status and completion-date filters; and bounded ascending-ID pagination. Reads use current accepted-friend authorization and writes require ownership and trusted browser origin. Movie, series and season entries remain independent; saved target resolution requires no OMDb request.
+
+The optional `localToday` input supplies the validated browser-local default when becoming Watched without an explicit completion date. Explicit null completion dates remain valid; unrelated Watched edits preserve dates, and leaving Watched clears them. Plan to Watch rejects non-null ratings and accepts null clearing. Reviews stay plain text, bounded to 10,000 characters; frontend rendering remains Task 10 work.
+
+Entry writes and genuine status/rating/review activity commit together. Owned-row locks serialize concurrent updates; duplicate creates return conflicts without extra events. No-op and date-only edits create no events, and deletion cascades existing entry activity.
+
+Verification: 48 focused tests and all 215 repository tests passed (173 API, 42 web), with no skipped integration suites; lint, typecheck and production builds passed. Independent review approved with no findings. Tests used isolated local PostgreSQL and Mailpit, with no user Neon or live OMDb access. Temporary services were stopped with verified process identities; user environment files, existing servers and untracked tool configuration were preserved. Tasks 8–12 remain pending.
