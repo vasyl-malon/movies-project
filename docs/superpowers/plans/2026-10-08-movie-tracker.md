@@ -180,11 +180,11 @@ Use UUID application IDs, case-normalized usernames, ISO timestamps, and bounded
 
 **Interfaces:** Produces exact username discovery, profile-link navigation, pending requests, friend list, friend watch-list views, and paginated feed. Uses the API privacy policy; never treats a UI friendship flag as permission.
 
-- [ ] Add multi-user browser tests for search/send/accept, decline/cancel, accepted friend list visibility, private profile before acceptance, feed updates, and removal. Assert the removing user's private queries disappear, and the other client's fresh request is denied after removal. Confirm failures.
-- [ ] Implement request/relationship controls and profile sharing. Show only basic profile fields before friendship acceptance. Invalidate relevant queries after acceptance/removal; do not show a notification UI or like/comment controls.
-- [ ] Implement activity cards using current authorized content and cursor pagination. Refresh on navigation/window focus; no real-time infrastructure is needed. Offer ordinary retry behavior for backend failures.
-- [ ] Run `pnpm --filter @tracker/web exec playwright test e2e/social.spec.ts`; expect mutual-access and revocation flows passing.
-- [ ] Commit as `feat: add friends and private social activity interface`.
+- [x] Add multi-user browser tests for search/send/accept, decline/cancel, accepted friend list visibility, private profile before acceptance, feed updates, and removal. Assert the removing user's private queries disappear, and the other client's fresh request is denied after removal. Confirm failures.
+- [x] Implement request/relationship controls and profile sharing. Show only basic profile fields before friendship acceptance. Invalidate relevant queries after acceptance/removal; do not show a notification UI or like/comment controls.
+- [x] Implement activity cards using current authorized content and cursor pagination. Refresh on navigation/window focus; no real-time infrastructure is needed. Offer ordinary retry behavior for backend failures.
+- [x] Run `pnpm --filter @tracker/web exec playwright test e2e/social.spec.ts`; expect mutual-access and revocation flows passing.
+- [x] Commit as `feat: add friends and private social activity interface`.
 
 ## Task 12: Release checks and deployment handoff
 
@@ -288,3 +288,14 @@ My List filters by status, genre, personal rating and completion dates with serv
 Verification: the isolated suite passed 240/240 tests (195 API, 45 web), with no skips, and the full browser run passed 19/19 scenarios (11 tracking, 8 authentication). Final mutation/season amendments passed six covering browser scenarios; final visual checks passed with zero console errors. Independent review identified draft loss after background parent metadata errors. Both title and season-list failures were reproduced before the fix, then six covering browser checks passed after preserving cached editor subtrees. Scoped re-review approved the correction with no new findings. Fresh lint, typecheck and production builds passed after the final code change. Desktop/mobile and dark/light screenshots were reviewed.
 
 Tests used isolated PostgreSQL, API, Next and Mailpit with controlled OMDb responses. Temporary services were stopped with verified process identities, preserving existing user servers and configuration. One early generation-only build may have loaded the root environment; it made no database/provider connection or secret output, and all final checks explicitly used isolated configuration. Tasks 11–12 remain pending; no push, merge request or deployment was performed.
+
+
+### Task 11 completion — 2026-10-10
+
+Branch `feat/task-11-social-ui` starts at merged develop `c524812`. Commits `d31500c` and `3111638` add exact username discovery, directional friend requests, acceptance/decline/cancellation, accepted friend lists and removal, shareable signed-in profiles, read-only friend collections, and the paginated friends feed. Before acceptance profiles expose only basic fields. Friend collections display the owner's status, rating, calendar date and plain-text review, using existing server filters and pagination. Feed cards use current authorized entry content, real event timestamps and actor profile links; navigation/focus refreshes authorization. No notifications, likes, comments or real-time infrastructure were added.
+
+A bounded verified GET relationship endpoint and strict proxy route return only exact-pair relationship state, avoiding first-page inference or unbounded scans. The UI never replaces backend authorization. Removal cancels and discards affected private queries and all viewer feed pages, reconciles ambiguous failures, and preserves filter drafts behind a hidden/inert boundary. Independent review identified navigation during pending removal skipping final reconciliation. The fix keeps revocation state across route unmount, rejects stale feed responses with a revision, and invalidates session generations synchronously on logout so old finalizers cannot affect new-session caches.
+
+Verification: one complete isolated run passed 244/244 tests (196 API, 48 web), without skips, plus lint, typecheck and production builds. The combined browser run passed 27/28; the remaining tracking threshold assertion was contaminated by social fixture ratings. Explicit owned-user cleanup corrected the fixture, and a fresh local run passed all seven social scenarios followed by the affected tracking scenario (8/8). Final screenshots cover profiles, friends and feed on desktop/mobile in dark/light modes. The removal/navigation race was reproduced with actual delayed DELETE, an authorized held feed response and a fresh denied private read, then passed after correction. Final web tests passed 50/50, focused lifecycle/cache tests 3/3, and six covering browser checks included logout, late responses, rejected/ambiguous removal and preserved drafts. Fresh lint, typecheck and build passed after the final fix. Scoped re-review approved with no new findings.
+
+Both temporary PostgreSQL/API/Next/Mailpit service groups were stopped with verified process identities. User environment files, existing servers and untracked tool configuration were preserved; tests used no Neon, live OMDb or real email. Task 12 remains pending. No push, merge request or deployment was performed.
