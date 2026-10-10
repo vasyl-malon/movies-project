@@ -5,6 +5,6 @@ import { OMDB_API_KEY, OmdbClient } from './omdb.client.js';
 @Module({})
 export class MediaModule {
   static register(apiKey: string): DynamicModule {
-    return { module: MediaModule, controllers: [MediaController], providers: [MediaService, OmdbClient, { provide: OMDB_API_KEY, useValue: apiKey }], exports: [MediaService] };
+    return { module: MediaModule, global: true, controllers: [MediaController], providers: [MediaService, OmdbClient, { provide: OMDB_API_KEY, useValue: apiKey }], exports: [MediaService] };
   }
 }

@@ -17,6 +17,8 @@ export interface EntryInput {
   rating?: number | null;
   review?: string | null;
   completedOn?: CalendarDate | null;
+  /** Browser-local date required when becoming Watched without explicit completedOn. */
+  localToday?: CalendarDate;
 }
 
 export interface MediaDisplay {
