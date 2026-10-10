@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, HttpException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import type { FriendRequestView, Page, ProfileView } from '@tracker/contracts';
+import type { FriendRequestView, Page, ProfileView, RelationView } from '@tracker/contracts';
 import { PrismaService } from '../../database/prisma.service.js';
 import { RateLimitService } from '../../common/rate-limit.service.js';
 import { isUniqueConflict, profileView, publicProfileSelect } from '../profiles/profiles.service.js';
@@ -9,6 +9,23 @@ const participant = (userId: string): Prisma.FriendshipWhereInput => ({ OR: [{ u
 @Injectable()
 export class FriendsService {
   constructor(@Inject(PrismaService) private readonly db: PrismaService, @Inject(RateLimitService) private readonly limits: RateLimitService) {}
+  async relationship(viewerId: string, targetId: string): Promise<RelationView> {
+    if (!await this.db.user.findUnique({ where: { id: targetId }, select: { id: true } })) {
+      throw new NotFoundException();
+    }
+    if (viewerId === targetId) return { status: 'SELF' };
+    const [userLowId, userHighId] = [viewerId, targetId].sort() as [string, string];
+    const row = await this.db.friendship.findUnique({
+      where: { userLowId_userHighId: { userLowId, userHighId } },
+      select: { id: true, status: true, requesterId: true },
+    });
+    if (!row) return { status: 'NONE' };
+    if (row.status === 'ACCEPTED') return { status: 'ACCEPTED' };
+    return {
+      status: row.requesterId === viewerId ? 'OUTGOING' : 'INCOMING',
+      requestId: row.id,
+    };
+  }
   async requests(userId: string, page: PageInput): Promise<Page<FriendRequestView>> {
     const limit = page.limit ?? 20;
     const rows = await this.db.friendship.findMany({ where: { ...participant(userId), status: 'PENDING', ...(page.cursor ? { id: { gt: page.cursor } } : {}) }, orderBy: { id: 'asc' }, take: limit + 1, select: { id: true, requesterId: true, userLow: { select: publicProfileSelect }, userHigh: { select: publicProfileSelect } } });

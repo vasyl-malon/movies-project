@@ -11,6 +11,13 @@ export const queryKeys = {
   lists: (viewer: string, owner: string) =>
     ["user", viewer, "lists", owner] as const,
   feed: (viewer: string) => ["user", viewer, "feed"] as const,
+  friends: (viewer: string) => ["user", viewer, "friends"] as const,
+  requests: (viewer: string) => ["user", viewer, "requests"] as const,
+  profiles: (viewer: string, username: string) =>
+    ["user", viewer, "profiles", username.toLowerCase()] as const,
+  relationships: (viewer: string) => ["user", viewer, "relationships"] as const,
+  relationship: (viewer: string, target: string) =>
+    [...queryKeys.relationships(viewer), target] as const,
   media: (imdbId: string) => ["media", "detail", imdbId] as const,
   seasons: (mediaId: string) => ["media", "seasons", mediaId] as const,
   search: (query: string, type: string, page: number) =>

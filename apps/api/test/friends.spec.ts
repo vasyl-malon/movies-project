@@ -10,6 +10,55 @@ describe.skipIf(!enabled)('friendship HTTP and private access',()=>{
  beforeAll(async()=>{app=await createApplication({...testConfig,databaseUrl:process.env.TEST_DATABASE_URL!,smtpPort:Number(process.env.TEST_SMTP_PORT)});await app.init();});
  beforeEach(async()=>{await resetDatabase(db);}); afterAll(async()=>{await app?.close();await db.$disconnect();});
  async function actor(){const {client,email}=await createVerifiedUserClient(app,undefined,process.env.TEST_MAILPIT_URL);return {client,user:await db.user.findUniqueOrThrow({where:{email}})};}
+  it('looks up only the exact viewer relationship, including direction, self, missing and revocation', async () => {
+    const a = await actor(),
+      b = await actor(),
+      c = await actor();
+    const path = `/api/friends/${b.user.id}/relationship`;
+    await request(app.getHttpServer()).get(path).expect(401);
+    await a.client.get('/api/friends/bad/relationship').expect(400);
+    await a.client
+      .get(`/api/friends/${crypto.randomUUID()}/relationship`)
+      .expect(404);
+    expect(
+      (await a.client.get(`/api/friends/${a.user.id}/relationship`).expect(200))
+        .body,
+    ).toEqual({ status: 'SELF' });
+    expect((await a.client.get(path).expect(200)).body).toEqual({
+      status: 'NONE',
+    });
+    const pending = await a.client
+      .post('/api/friend-requests')
+      .set('Origin', testConfig.frontendOrigin)
+      .send({ recipientId: b.user.id })
+      .expect(201);
+    expect((await a.client.get(path).expect(200)).body).toEqual({
+      status: 'OUTGOING',
+      requestId: pending.body.id,
+    });
+    expect(
+      (await b.client.get(`/api/friends/${a.user.id}/relationship`).expect(200))
+        .body,
+    ).toEqual({ status: 'INCOMING', requestId: pending.body.id });
+    expect((await c.client.get(path).expect(200)).body).toEqual({
+      status: 'NONE',
+    });
+    await b.client
+      .post(`/api/friend-requests/${pending.body.id}/accept`)
+      .set('Origin', testConfig.frontendOrigin)
+      .send({})
+      .expect(201);
+    const accepted = await a.client.get(path).expect(200);
+    expect(accepted.headers['cache-control']).toContain('no-store');
+    expect(accepted.body).toEqual({ status: 'ACCEPTED' });
+    await b.client
+      .delete(`/api/friends/${a.user.id}`)
+      .set('Origin', testConfig.frontendOrigin)
+      .expect(200);
+    expect((await a.client.get(path).expect(200)).body).toEqual({
+      status: 'NONE',
+    });
+  });
  it('requires sessions on every friendship route',async()=>{const server=request(app.getHttpServer());await server.get('/api/friends').expect(401);await server.get('/api/friend-requests').expect(401);await server.post('/api/friend-requests').set('Origin',testConfig.frontendOrigin).send({recipientId:crypto.randomUUID()}).expect(401);});
  it('rejects self requests, outsider actions, requester acceptance, pending access; acceptance and removal change fresh mutual access',async()=>{
   const a=await actor(),b=await actor(),c=await actor();

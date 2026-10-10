@@ -96,6 +96,11 @@ export interface FriendRequestView {
   recipient: ProfileView;
 }
 
+/** Exact viewer/target relationship; private reads still require server authorization. */
+export type RelationView =
+  | { status: 'SELF' | 'NONE' | 'ACCEPTED' }
+  | { status: 'INCOMING' | 'OUTGOING'; requestId: string };
+
 /** Discovery pages preserve each provider type's page order; mixed pages interleave types. */
 export interface MediaSearchItem {
   imdbId: string;

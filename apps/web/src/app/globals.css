@@ -742,3 +742,188 @@ fieldset:disabled {
 .entry-card .entry-card-content {
   padding-top: 22px;
 }
+
+/* Friends, shared profiles, and current activity. */
+.social-discovery {
+  padding: 26px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+.social-search-row {
+  display: flex;
+  gap: 12px;
+  margin: 12px 0;
+}
+.social-search-row input {
+  flex: 1;
+  min-width: 0;
+  height: 42px;
+}
+.social-section {
+  margin-top: 38px;
+}
+.social-section h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.social-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--border);
+}
+.social-person {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.social-person > span:last-child {
+  min-width: 0;
+}
+.social-person strong,
+.social-person > span > span {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.social-person strong {
+  font-size: 14px;
+  font-weight: 500;
+}
+.social-person > span > span {
+  margin-top: 5px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.social-empty {
+  padding: 22px 0;
+  color: var(--muted);
+  line-height: 1.8;
+}
+.relationship-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.relationship-controls [role="alert"] {
+  width: 100%;
+}
+.relationship-label,
+.relationship-controls [role="status"] {
+  color: var(--muted);
+  font-size: 11px;
+}
+.profile-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+.profile-heading > .avatar {
+  width: 70px;
+  height: 70px;
+  border-radius: 20px;
+}
+.profile-heading > div {
+  flex: 1;
+  min-width: 0;
+}
+.profile-heading h1 {
+  font-family: var(--display);
+  font-size: 38px;
+  font-weight: 400;
+  margin: 8px 0;
+  overflow-wrap: anywhere;
+}
+.profile-heading p {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.profile-relationship {
+  margin: 20px 0 32px;
+}
+.social-review {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.8;
+  color: var(--foreground);
+  margin-top: 18px;
+}
+.activity-list {
+  display: grid;
+  gap: 20px;
+}
+.activity-card {
+  padding: 26px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card);
+}
+.activity-card header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding-bottom: 20px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+.activity-card time {
+  color: var(--muted);
+  font-size: 11px;
+  text-align: right;
+}
+.activity-content {
+  display: grid;
+  grid-template-columns: 100px minmax(0, 1fr);
+  gap: 24px;
+}
+.activity-content h2 {
+  font-family: var(--display);
+  font-size: 26px;
+  font-weight: 400;
+  margin: 10px 0 16px;
+}
+.activity-content .poster {
+  border-radius: 8px;
+}
+@media (max-width: 640px) {
+  .social-discovery,
+  .activity-card {
+    padding: 20px 16px;
+  }
+  .social-search-row {
+    flex-direction: column;
+  }
+  .social-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .profile-heading {
+    gap: 14px;
+  }
+  .profile-heading h1 {
+    font-size: 28px;
+  }
+  .profile-heading > button {
+    width: 100%;
+  }
+  .activity-card header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .activity-content {
+    grid-template-columns: 68px minmax(0, 1fr);
+    gap: 16px;
+  }
+  .activity-content h2 {
+    font-size: 22px;
+  }
+}

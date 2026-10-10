@@ -8,6 +8,7 @@ const routes: [RegExp, readonly string[]][] = [
   [/^auth\/reset-password\/[a-zA-Z0-9]{24}$/, ['GET']],
   [/^me$/, ['GET', 'PATCH']], [/^profiles\/[a-zA-Z0-9_.]+$/, ['GET']],
   [/^friends$/, ['GET']], [/^friends\/[a-zA-Z0-9_-]+$/, ['DELETE']],
+  [/^friends\/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\/relationship$/, ['GET']],
   [/^friend-requests$/, ['GET', 'POST']], [/^friend-requests\/[a-zA-Z0-9_-]+$/, ['DELETE']], [/^friend-requests\/[a-zA-Z0-9_-]+\/accept$/, ['POST']],
   [/^media\/(?:search|imdb\/tt[0-9]+|[a-zA-Z0-9_-]+\/seasons(?:\/[0-9]+)?)$/, ['GET']],
   [/^entries$/, ['POST']], [/^entries\/[a-zA-Z0-9_-]+$/, ['GET', 'PATCH', 'DELETE']],
