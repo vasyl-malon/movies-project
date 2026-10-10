@@ -1,9 +1,13 @@
 'use client';
 import { createAuthClient } from 'better-auth/react';
 import { usernameClient } from 'better-auth/client/plugins';
+import { isProfileUsername } from '../profiles/links';
 export const authClient = createAuthClient({ basePath: '/api/auth', plugins: [usernameClient()], fetchOptions: { credentials: 'same-origin', cache: 'no-store' } });
 export function safeDestination(value: string | null | undefined) {
   if (value && /^\/titles\/tt\d{7,10}$/.test(value)) return value;
+  if (value?.startsWith('/profiles/') && isProfileUsername(value.slice('/profiles/'.length))) {
+    return value;
+  }
   return ['/settings','/search','/my-list','/feed','/friends'].includes(value ?? '') ? value! : '/settings';
 }
 export function accountError(error: { code?: string; status?: number } | null | undefined) {

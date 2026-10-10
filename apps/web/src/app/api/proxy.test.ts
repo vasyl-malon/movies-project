@@ -35,6 +35,22 @@ function request(path = 'auth/sign-in/email', init: RequestInit = {}) {
   return new Request(`http://localhost:3000/api/${path}`, { method: 'POST', headers: { Cookie: 'session=real-cookie', Origin: 'https://evil.example', 'Content-Type': 'application/json' }, body: '{"email":"one@example.test"}', ...init });
 }
 describe('same-origin API proxy', () => {
+  it('forwards only strict UUID GET relationship lookup with private no-store headers', async () => {
+    const path = 'friends/550e8400-e29b-41d4-a716-446655440000/relationship';
+    const response = await proxyRequest(
+      request(path, { method: 'GET', body: undefined }),
+    );
+    expect(response.status).toBe(200);
+    expect(received.url).toBe(`/api/${path}`);
+    expect(response.headers.get('cache-control')).toContain('no-store');
+    expect((await proxyRequest(request(path))).status).toBe(405);
+    for (const invalid of ['friends/bad/relationship', `${path}/extra`]) {
+      expect(
+        (await proxyRequest(request(invalid, { method: 'GET', body: undefined })))
+          .status,
+      ).toBe(404);
+    }
+  });
   it('forwards genuine reset-link tokens only through the GET contract', async () => {
     const response = await proxyRequest(request('auth/reset-password/AbCdEfGhIjKlMnOpQrStUvWx?redirect=1', { method: 'GET', body: undefined }));
     expect(response.status).toBe(302);

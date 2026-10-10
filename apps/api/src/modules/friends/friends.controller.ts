@@ -17,6 +17,10 @@ export class FriendSendInput { @IsUUID() recipientId!: string; }
 @UseGuards(SessionGuard, MutationOriginGuard)
 export class FriendsController {
   constructor(@Inject(FriendsService) private readonly friendsService: FriendsService) {}
+  @Get('friends/:userId/relationship')
+  relationship(@Req() req: SessionRequest, @Param('userId', new ParseUUIDPipe()) userId: string) {
+    return this.friendsService.relationship(req.user.id, userId);
+  }
   @Get('friends') friends(@Req() req: SessionRequest, @Query() page: PageQuery) { return this.friendsService.friends(req.user.id, page); }
   @Get('friend-requests') requests(@Req() req: SessionRequest, @Query() page: PageQuery) { return this.friendsService.requests(req.user.id, page); }
   @Post('friend-requests') send(@Req() req: SessionRequest, @Body() body: FriendSendInput) { return this.friendsService.send(req.user.id, body.recipientId); }
