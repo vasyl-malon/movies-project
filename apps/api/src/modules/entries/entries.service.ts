@@ -80,9 +80,10 @@ export class EntriesService {
   }
   async list(viewerId: string, ownerId: string, query: EntryListQuery): Promise<Page<EntryView>> {
     await this.access.assertCanRead(viewerId, ownerId);
+    if (query.mediaId !== undefined && query.seasonId !== undefined) throw new BadRequestException();
     if (query.ratingMin !== undefined && query.ratingMax !== undefined && query.ratingMin > query.ratingMax || query.from && query.to && query.from > query.to) throw new BadRequestException();
     const where: Prisma.WatchEntryWhereInput = {
-      userId: ownerId, status: query.status,
+      userId: ownerId, status: query.status, mediaId: query.mediaId, seasonId: query.seasonId,
       ...(query.cursor ? { id: { gt: query.cursor } } : {}),
       ...(query.genre ? { OR: [{ media: { genres: { has: query.genre } } }, { season: { media: { genres: { has: query.genre } } } }] } : {}),
       ...(query.ratingMin !== undefined || query.ratingMax !== undefined ? { rating: { not: null, gte: query.ratingMin, lte: query.ratingMax } } : {}),
