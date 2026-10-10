@@ -141,3 +141,49 @@ test('session rechecks preserve drafts and session failures offer a working retr
   await page.unroute('**/api/auth/get-session**'); await page.getByRole('button', { name:'Retry' }).click();
   await expect(page.getByLabel('Display name')).toHaveValue('Private Cinema Name');
 });
+test('a pending profile save blocks edits and repeated submissions, then preserves failed input', async ({ page, account, mailLink }) => {
+  await register(page, account); await page.goto(await mailLink(account.email,'Verify')); await signIn(page,account.email,account.password);
+  let release!: () => void; let responseReady!: () => void; let writes = 0;
+  const held = new Promise<void>(resolve => { release = resolve; });
+  const ready = new Promise<void>(resolve => { responseReady = resolve; });
+  await page.route('**/api/me', async route => {
+    if (route.request().method() !== 'PATCH') { await route.continue(); return; }
+    writes++;
+    const response = await route.fetch(); responseReady(); await held; await route.fulfill({ response });
+  });
+  await page.getByLabel('Display name').fill('First submitted name');
+  await page.getByRole('button', { name:'Save profile' }).click(); await ready;
+  try {
+    await expect(page.getByLabel('Display name')).toBeDisabled();
+    await expect(page.getByLabel('Username', { exact:true })).toBeDisabled();
+    await expect(page.getByRole('radio', { name:'Popcorn' })).toBeDisabled();
+    await expect(page.getByRole('button', { name:'Saving…' })).toBeDisabled();
+    await expect(page.getByRole('button', { name:'Sign out' })).toBeEnabled();
+    await expect(page.getByLabel('Display name').fill('Newer unsaved name', { timeout:300 })).rejects.toThrow();
+    await expect(page.getByLabel('Display name')).toHaveValue('First submitted name');
+    // Even an explicit form submission while the request is held must be ignored.
+    const repeated = page.waitForRequest(request => request.method() === 'PATCH' && new URL(request.url()).pathname === '/api/me', { timeout:300 }).then(() => true, () => false);
+    await page.locator('form').evaluate(form => (form as HTMLFormElement).requestSubmit());
+    expect(await repeated).toBe(false);
+    expect(writes).toBe(1);
+  } finally { release(); }
+  await expect(page.getByRole('status')).toContainText('Profile saved');
+  await expect(page.getByLabel('Display name')).toHaveValue('First submitted name');
+  await expect(page.getByLabel('Display name')).toBeEnabled();
+  await expect(page.getByLabel('Username', { exact:true })).toBeEnabled();
+  await expect(page.getByRole('radio', { name:'Popcorn' })).toBeEnabled();
+  await page.unroute('**/api/me');
+  await page.route('**/api/me', async route => {
+    if (route.request().method() !== 'PATCH') { await route.continue(); return; }
+    await route.fulfill({ status:503, contentType:'application/json', body:'{}' });
+  });
+  await page.getByLabel('Display name').fill('Retryable draft');
+  await page.getByLabel('Username', { exact:true }).fill('changed_username');
+  await page.getByRole('radio', { name:'Popcorn' }).click();
+  await page.getByRole('button', { name:'Save profile' }).click();
+  await expect(page.locator('p[role=alert]')).toContainText('couldn’t save');
+  await expect(page.getByLabel('Display name')).toHaveValue('Retryable draft');
+  await expect(page.getByLabel('Username', { exact:true })).toHaveValue('changed_username');
+  await expect(page.getByRole('radio', { name:'Popcorn' })).toBeChecked();
+  await expect(page.getByRole('button', { name:'Save profile' })).toBeEnabled();
+});
