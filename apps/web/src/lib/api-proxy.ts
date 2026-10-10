@@ -5,6 +5,7 @@ import { isIP } from 'node:net';
 const routes: [RegExp, readonly string[]][] = [
   [/^auth\/(?:sign-up\/email|sign-in\/email|sign-out|request-password-reset|reset-password|send-verification-email)$/, ['POST']],
   [/^auth\/(?:get-session|verify-email)$/, ['GET']],
+  [/^auth\/reset-password\/[a-zA-Z0-9]{24}$/, ['GET']],
   [/^me$/, ['GET', 'PATCH']], [/^profiles\/[a-zA-Z0-9_.]+$/, ['GET']],
   [/^friends$/, ['GET']], [/^friends\/[a-zA-Z0-9_-]+$/, ['DELETE']],
   [/^friend-requests$/, ['GET', 'POST']], [/^friend-requests\/[a-zA-Z0-9_-]+$/, ['DELETE']], [/^friend-requests\/[a-zA-Z0-9_-]+\/accept$/, ['POST']],

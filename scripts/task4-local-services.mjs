@@ -17,7 +17,7 @@ if (process.argv[2] === 'cleanup') {
   const webDirectory = `${directory}/web`;
   mkdirSync(webDirectory);
   cpSync(`${root}/apps/web/src`, `${webDirectory}/src`, { recursive: true });
-  for (const file of ['package.json', 'tsconfig.json', 'next.config.ts']) cpSync(`${root}/apps/web/${file}`, `${webDirectory}/${file}`);
+  for (const file of ['package.json', 'tsconfig.json', 'next.config.ts', 'postcss.config.mjs']) cpSync(`${root}/apps/web/${file}`, `${webDirectory}/${file}`);
   const modules = `${webDirectory}/node_modules`;
   mkdirSync(modules);
   for (const name of readdirSync(`${root}/apps/web/node_modules`).filter(name => !name.startsWith('.'))) {

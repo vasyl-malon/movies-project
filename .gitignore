@@ -11,3 +11,6 @@ coverage/
 apps/web/next-env.d.ts
 
 apps/api/src/generated/
+
+playwright-report/
+test-results/

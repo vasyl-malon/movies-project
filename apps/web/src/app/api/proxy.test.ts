@@ -35,6 +35,14 @@ function request(path = 'auth/sign-in/email', init: RequestInit = {}) {
   return new Request(`http://localhost:3000/api/${path}`, { method: 'POST', headers: { Cookie: 'session=real-cookie', Origin: 'https://evil.example', 'Content-Type': 'application/json' }, body: '{"email":"one@example.test"}', ...init });
 }
 describe('same-origin API proxy', () => {
+  it('forwards genuine reset-link tokens only through the GET contract', async () => {
+    const response = await proxyRequest(request('auth/reset-password/AbCdEfGhIjKlMnOpQrStUvWx?redirect=1', { method: 'GET', body: undefined }));
+    expect(response.status).toBe(302);
+    expect(response.headers.get('location')).toBe('http://localhost:3000/api/auth/get-session');
+    expect((await proxyRequest(request('auth/reset-password/AbCdEfGhIjKlMnOpQrStUvWx', { method: 'POST' }))).status).toBe(405);
+    expect((await proxyRequest(request('auth/reset-password/AbCdEfGhIjKlMnOpQrStUvWx/extra', { method: 'GET', body: undefined }))).status).toBe(404);
+    expect((await proxyRequest(request('auth/reset-password/short', { method: 'GET', body: undefined }))).status).toBe(404);
+  });
   it('forwards cookies/body and actual origin while authenticating its client IP', async () => {
     const response = await proxyRequest(request());
     expect(response.status).toBe(200);
